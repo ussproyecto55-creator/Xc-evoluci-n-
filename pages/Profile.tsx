@@ -139,7 +139,7 @@ export const Profile: React.FC = () => {
         <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-2 mb-4">Atención al Inversor</h3>
         <div className="grid grid-cols-2 gap-3">
            <a 
-            href="https://t.me/nexus_support" 
+            href="https://t.me/Elitesportsm" 
             target="_blank" 
             className="glass p-5 rounded-3xl border border-white/5 flex flex-col items-center space-y-3 hover:bg-white/5 transition-all"
            >
