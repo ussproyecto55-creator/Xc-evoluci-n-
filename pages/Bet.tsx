@@ -6,7 +6,7 @@ import { Sport, Transaction } from '../types';
 import { CheckCircle2, Trophy, Clock, X, Plus, Minus, ShieldAlert, Timer, Activity, ArrowRight, ShieldCheck, BarChart3, AlertTriangle, History, ArrowDownToLine, TrendingUp } from 'lucide-react';
 
 export const Bet: React.FC = () => {
-  const { user, applyCompoundInterest, allTransactions } = useApp();
+  const { user, applyCompoundInterest, allTransactions, showNotification } = useApp();
   const [betting, setBetting] = useState(false);
   const [done, setDone] = useState(false);
   const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
@@ -43,7 +43,7 @@ export const Bet: React.FC = () => {
 
   const handleOpenModal = (sport: Sport) => {
     if (hasAlreadyBetToday || user?.activeBet) {
-      alert("Ya has realizado tu operación diaria. Vuelve mañana para seguir invirtiendo.");
+      showNotification("Ya has realizado tu operación diaria. Vuelve mañana para seguir invirtiendo.", "info");
       return;
     }
     setSelectedSport(sport);
@@ -54,11 +54,11 @@ export const Bet: React.FC = () => {
   const goToSummary = () => {
     const amount = parseFloat(betAmount);
     if (isNaN(amount) || amount < 10) {
-      alert("La inversión mínima es de 10 USDT.");
+      showNotification("La inversión mínima es de 10 USDT.", "error");
       return;
     }
     if (amount > (user?.balance || 0)) {
-      alert("Saldo insuficiente en balance principal.");
+      showNotification("Saldo insuficiente en balance principal.", "error");
       return;
     }
     setShowSummary(true);
@@ -69,7 +69,7 @@ export const Bet: React.FC = () => {
     const amount = parseFloat(betAmount);
     
     if (!isMarketOpen) {
-      alert("El mercado está actualmente cerrado. Horario: 11:00 - 16:00");
+      showNotification("El mercado está actualmente cerrado. Horario: 11:00 - 16:00", "error");
       return;
     }
 
@@ -86,9 +86,11 @@ export const Bet: React.FC = () => {
       setSelectedSport(null);
       setShowSummary(false);
       setDone(true);
+      showNotification("Operación iniciada correctamente", "success");
       setTimeout(() => setDone(false), 5000);
     } catch (error) {
       console.error("Error al ejecutar la inversión:", error);
+      showNotification("Error al procesar la inversión", "error");
       setBetting(false);
     }
   };

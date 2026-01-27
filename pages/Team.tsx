@@ -5,7 +5,7 @@ import { Users, Copy, Gift, BarChart3, ChevronRight, UserCircle2, Clock, Zap, Ta
 import { TeamMember, Transaction } from '../types';
 
 export const Team: React.FC = () => {
-  const { user, allUsers, allTransactions } = useApp();
+  const { user, allUsers, allTransactions, showNotification } = useApp();
   const [viewDetail, setViewDetail] = useState(false);
 
   // Fecha de referencia para estadísticas diarias (24h)
@@ -87,7 +87,7 @@ export const Team: React.FC = () => {
   const copyRefLink = () => {
     const link = `${window.location.origin}/#register?ref=${user.referralCode}`;
     navigator.clipboard.writeText(link);
-    alert("¡Enlace de referido copiado!");
+    showNotification("¡Enlace de referido copiado correctamente!", "success");
   };
 
   const level1 = teamStats.members.filter(m => m.level === 1);

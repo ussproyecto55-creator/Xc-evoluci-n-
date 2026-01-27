@@ -12,7 +12,7 @@ import { User, Transaction } from '../types';
 type AdminTab = 'stats' | 'users' | 'recharges' | 'withdrawals' | 'all-tx';
 
 export const AdminPanel: React.FC = () => {
-  const { allUsers, allTransactions, adminUpdateTransaction, adminUpdateUser, processWeeklyCommissions } = useApp();
+  const { allUsers, allTransactions, adminUpdateTransaction, adminUpdateUser, processWeeklyCommissions, showNotification } = useApp();
   const [activeTab, setActiveTab] = useState<AdminTab>('stats');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -36,9 +36,10 @@ export const AdminPanel: React.FC = () => {
     try {
       await adminUpdateUser(editingUser.id, editingUser);
       setEditingUser(null);
-      alert("Usuario actualizado correctamente");
+      showNotification("Usuario actualizado correctamente", "success");
     } catch (err) {
       console.error("Error al guardar cambios de usuario:", err);
+      showNotification("Error al guardar cambios", "error");
     }
   };
 
@@ -46,9 +47,10 @@ export const AdminPanel: React.FC = () => {
     if (window.confirm("¿Seguro que deseas forzar la entrega de comisiones pendientes ahora?")) {
       try {
         await processWeeklyCommissions();
-        alert("Comisiones entregadas.");
+        showNotification("Comisiones entregadas exitosamente.", "success");
       } catch (err) {
         console.error("Error al forzar pago semanal:", err);
+        showNotification("Error al procesar pago semanal.", "error");
       }
     }
   };

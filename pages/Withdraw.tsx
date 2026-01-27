@@ -5,12 +5,11 @@ import { VIP_LEVELS, ARRIVAL_TIMES } from '../constants';
 import { ArrowUpFromLine, Info, ShieldAlert, Save, Landmark, CheckCircle2, XCircle, Loader2, Clock, Percent, DollarSign } from 'lucide-react';
 
 export const Withdraw: React.FC = () => {
-  const { user, withdraw, saveWithdrawalAddress } = useApp();
+  const { user, withdraw, saveWithdrawalAddress, showNotification } = useApp();
   const [amount, setAmount] = useState('');
   const [wallet, setWallet] = useState(user?.withdrawalAddress || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     if (user?.withdrawalAddress) {
@@ -28,40 +27,51 @@ export const Withdraw: React.FC = () => {
   const netAmount = Math.max(0, withdrawalAmount - feeAmount);
 
   const handleSaveWallet = async () => {
-    if (!wallet) return setFeedback({ type: 'error', message: "Ingrese una dirección válida" });
+    if (!wallet) {
+      showNotification("Ingrese una dirección válida", "error");
+      return;
+    }
     setIsSaving(true);
     try {
       await saveWithdrawalAddress(wallet);
-      setFeedback({ type: 'success', message: "Billetera guardada correctamente" });
+      showNotification("Billetera guardada correctamente", "success");
     } catch (error) {
       console.error("Error al guardar billetera:", error);
+      showNotification("Error al guardar la billetera.", "error");
     } finally {
       setIsSaving(false);
-      setTimeout(() => setFeedback(null), 3000);
     }
   };
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount) return setFeedback({ type: 'error', message: "Ingrese el monto a retirar" });
-    if (parseFloat(amount) < 10) return setFeedback({ type: 'error', message: "El retiro mínimo es de 10 USDT" });
-    if (!wallet) return setFeedback({ type: 'error', message: "Debe guardar una billetera antes de retirar" });
+    if (!amount) {
+      showNotification("Ingrese el monto a retirar", "error");
+      return;
+    }
+    if (parseFloat(amount) < 10) {
+      showNotification("El retiro mínimo es de 10 USDT", "error");
+      return;
+    }
+    if (!wallet) {
+      showNotification("Debe guardar una billetera antes de retirar", "error");
+      return;
+    }
 
     setIsProcessing(true);
     try {
       const result = await withdraw(parseFloat(amount));
       if (result && result.success) {
-        setFeedback({ type: 'success', message: result.message || "Operación realizada correctamente" });
+        showNotification(result.message || "Operación realizada correctamente", "success");
         setAmount('');
       } else if (result) {
-        setFeedback({ type: 'error', message: result.message || "Error al procesar el retiro" });
+        showNotification(result.message || "Error al procesar el retiro", "error");
       }
     } catch (error) {
       console.error("Error crítico en el retiro:", error);
-      setFeedback({ type: 'error', message: "Error de conexión con el servidor" });
+      showNotification("Error de conexión con el servidor", "error");
     } finally {
       setIsProcessing(false);
-      setTimeout(() => setFeedback(null), 5000);
     }
   };
 
@@ -74,22 +84,6 @@ export const Withdraw: React.FC = () => {
            <span>Retiros Abiertos 24/7 • Llegada en {ARRIVAL_TIMES.WITHDRAW}</span>
         </div>
       </div>
-
-      {feedback && (
-        <div className={`fixed top-20 left-4 right-4 z-[100] glass border-2 p-5 rounded-[2rem] flex items-center space-x-4 animate-in slide-in-from-top duration-500 shadow-2xl ${
-          feedback.type === 'success' ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'
-        }`}>
-          <div className={`p-2 rounded-full text-white ${feedback.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-            {feedback.type === 'success' ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
-          </div>
-          <div className="flex-1">
-            <h4 className={`font-black text-sm italic uppercase ${feedback.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-              {feedback.type === 'success' ? 'Operación Exitosa' : 'Error de Operación'}
-            </h4>
-            <p className="text-[10px] text-slate-200">{feedback.message}</p>
-          </div>
-        </div>
-      )}
 
       {/* Stats VIP del Retiro */}
       <div className="grid grid-cols-2 gap-3">

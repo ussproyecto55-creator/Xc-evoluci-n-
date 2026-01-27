@@ -9,7 +9,7 @@ import {
 import { VIP_LEVELS } from '../constants';
 
 export const Profile: React.FC = () => {
-  const { user, logout, adminUpdateUser, saveWithdrawalAddress } = useApp();
+  const { user, logout, adminUpdateUser, saveWithdrawalAddress, showNotification } = useApp();
   const [showSettings, setShowSettings] = useState(false);
   
   // Local states for settings
@@ -29,9 +29,10 @@ export const Profile: React.FC = () => {
     try {
       await adminUpdateUser(user.id, { password: newPassword });
       setNewPassword('');
-      alert("Contraseña actualizada con éxito.");
+      showNotification("Contraseña actualizada con éxito.", "success");
     } catch (err) {
       console.error("Error al actualizar contraseña:", err);
+      showNotification("Error al actualizar contraseña.", "error");
     }
   };
 
@@ -39,9 +40,10 @@ export const Profile: React.FC = () => {
     if (!newWallet) return;
     try {
       await saveWithdrawalAddress(newWallet);
-      alert("Billetera configurada con éxito.");
+      showNotification("Billetera configurada con éxito.", "success");
     } catch (err) {
       console.error("Error al configurar billetera:", err);
+      showNotification("Error al configurar billetera.", "error");
     }
   };
 

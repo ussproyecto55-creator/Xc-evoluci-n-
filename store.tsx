@@ -3,6 +3,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Transaction, TeamMember, ActiveBet } from './types';
 import { VIP_LEVELS, REFERRAL_COMMISSION, TEAM_REBATES, FIRST_RECHARGE_BONUS, SPORTS } from './constants';
 import { supabase } from './lib/supabase';
+import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+
+type NotificationType = 'success' | 'error' | 'info';
+
+interface Notification {
+  id: string;
+  message: string;
+  type: NotificationType;
+}
 
 interface AppContextType {
   user: User | null;
@@ -21,6 +30,8 @@ interface AppContextType {
   // Admin functions
   adminUpdateTransaction: (id: string, status: 'completed' | 'rejected') => Promise<void>;
   adminUpdateUser: (userId: string, data: Partial<User>) => Promise<void>;
+  // Notification System
+  showNotification: (message: string | undefined | null, type?: NotificationType) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -30,6 +41,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Sistema de Notificaciones
+  const showNotification = (message: string | undefined | null, type: NotificationType = 'info') => {
+    const safeMessage = message && message.trim() !== '' ? message : 'Hubo un inconveniente, inténtalo de nuevo.';
+    const id = crypto.randomUUID();
+    setNotifications(prev => [...prev, { id, message: safeMessage, type }]);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 4000);
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   // Inicialización: Cargar datos desde Supabase
   useEffect(() => {
@@ -418,9 +446,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{ 
       user, allUsers, allTransactions, isLoading, setUser, addTransaction,
       login, logout, recharge, withdraw, saveWithdrawalAddress, applyCompoundInterest, processWeeklyCommissions,
-      adminUpdateTransaction, adminUpdateUser
+      adminUpdateTransaction, adminUpdateUser, showNotification
     }}>
       {children}
+      
+      {/* Toast Notification Container */}
+      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+        {notifications.map((n) => (
+          <div 
+            key={n.id} 
+            className={`
+              pointer-events-auto backdrop-blur-md shadow-2xl rounded-2xl p-4 min-w-[300px] max-w-sm border-l-4 animate-in slide-in-from-right duration-300 fade-in
+              flex items-start gap-3
+              ${n.type === 'success' ? 'bg-slate-900/90 border-green-500 text-slate-100' : 
+                n.type === 'error' ? 'bg-slate-900/90 border-red-500 text-slate-100' : 
+                'bg-slate-900/90 border-amber-500 text-slate-100'}
+            `}
+          >
+            <div className={`mt-0.5 shrink-0 ${
+              n.type === 'success' ? 'text-green-500' : 
+              n.type === 'error' ? 'text-red-500' : 'text-amber-500'
+            }`}>
+              {n.type === 'success' ? <CheckCircle2 size={20} /> : 
+               n.type === 'error' ? <AlertCircle size={20} /> : <Info size={20} />}
+            </div>
+            <div className="flex-1">
+              <h4 className={`text-xs font-black uppercase tracking-widest mb-1 ${
+                 n.type === 'success' ? 'text-green-500' : 
+                 n.type === 'error' ? 'text-red-500' : 'text-amber-500'
+              }`}>
+                {n.type === 'success' ? 'Éxito' : n.type === 'error' ? 'Error' : 'Información'}
+              </h4>
+              <p className="text-xs font-medium leading-relaxed opacity-90">{n.message}</p>
+            </div>
+            <button onClick={() => removeNotification(n.id)} className="text-slate-500 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
     </AppContext.Provider>
   );
 };

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Home, TrendingUp, Users, User, ArrowLeftRight, Settings2, Crown, Shield } from 'lucide-react';
+import { useApp } from '../store';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,8 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, username, balance, isAdmin }) => {
+  const { showNotification } = useApp();
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 pb-20">
       {/* Header */}
@@ -46,9 +49,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             </p>
             
             <div className="flex justify-center items-center space-x-4 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-              <button onClick={() => console.log("Info: Privacidad manejada por Nexus Protocol.")} className="hover:text-amber-500 transition-colors">Política de Privacidad</button>
+              <button onClick={() => showNotification("Info: Privacidad manejada por Nexus Protocol.", "info")} className="hover:text-amber-500 transition-colors">Política de Privacidad</button>
               <div className="w-1 h-1 rounded-full bg-slate-700"></div>
-              <button onClick={() => console.log("Info: Términos de simulación de arbitraje.")} className="hover:text-amber-500 transition-colors">Términos de Servicio</button>
+              <button onClick={() => showNotification("Info: Términos de simulación de arbitraje.", "info")} className="hover:text-amber-500 transition-colors">Términos de Servicio</button>
             </div>
           </div>
 

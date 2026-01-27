@@ -4,7 +4,7 @@ import { useApp } from '../store';
 import { ShieldCheck, User, Lock, Key, ArrowRight, UserPlus, Eye, EyeOff, CheckCircle, Info, X } from 'lucide-react';
 
 export const Auth: React.FC = () => {
-  const { login } = useApp();
+  const { login, showNotification } = useApp();
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,28 +29,34 @@ export const Auth: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) return; // No alert needed for empty basic fields in a professional app
+    if (!username || !password) {
+      showNotification("Por favor completa todos los campos requeridos.", "error");
+      return;
+    }
+    
     if (!isLogin && password !== confirmPassword) {
-      alert("Las contraseñas no coinciden.");
+      showNotification("Las contraseñas no coinciden.", "error");
       return;
     }
     if (!isLogin && !acceptTerms) {
-      alert("Debe aceptar los términos y condiciones.");
+      showNotification("Debe aceptar los términos y condiciones.", "error");
       return;
     }
     
     try {
       const result = await login(username, password, !isLogin, !isLogin ? referralCode : undefined);
-      if (result && !result.success) {
-        if (result.message) {
-          alert(result.message);
+      if (result) {
+        if (result.success) {
+          showNotification(result.message, "success");
         } else {
-          console.warn("Login fallido sin mensaje definido.");
+          showNotification(result.message, "error");
         }
+      } else {
+        showNotification("Error desconocido en la autenticación.", "error");
       }
     } catch (error) {
       console.error("Error durante la autenticación:", error);
-      // No alertar errores técnicos de conexión al usuario final según las instrucciones
+      showNotification("Error de conexión. Inténtalo de nuevo más tarde.", "error");
     }
   };
 

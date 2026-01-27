@@ -5,7 +5,7 @@ import { ShieldCheck, Upload, AlertCircle, CheckCircle2, Copy, FileText, Loader2
 import { ARRIVAL_TIMES } from '../constants';
 
 export const Recharge: React.FC = () => {
-  const { recharge } = useApp();
+  const { recharge, showNotification } = useApp();
   const [amount, setAmount] = useState('10');
   const [network, setNetwork] = useState<'TRC20' | 'BEP20'>('TRC20');
   const [proof, setProof] = useState<File | null>(null);
@@ -15,11 +15,11 @@ export const Recharge: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) < 10) {
-      alert("La recarga mínima es de 10 USDT");
+      showNotification("La recarga mínima es de 10 USDT", "error");
       return;
     }
     if (!proof) {
-      alert("Por favor suba el comprobante de pago");
+      showNotification("Por favor suba el comprobante de pago", "error");
       return;
     }
 
@@ -32,18 +32,21 @@ export const Recharge: React.FC = () => {
         if (base64String) {
           await recharge(parseFloat(amount), base64String);
           setSuccess(true);
+          showNotification("Solicitud de recarga enviada con éxito.", "success");
           setProof(null);
           setAmount('10');
           setTimeout(() => setSuccess(false), 6000);
         }
       } catch (err) {
         console.error("Error al procesar la recarga:", err);
+        showNotification("Error al procesar el archivo. Intente de nuevo.", "error");
       } finally {
         setIsSubmitting(false);
       }
     };
     reader.onerror = () => {
       console.error("Error al leer el archivo de imagen");
+      showNotification("Error al leer la imagen.", "error");
       setIsSubmitting(false);
     };
     reader.readAsDataURL(proof);
@@ -55,7 +58,7 @@ export const Recharge: React.FC = () => {
 
   const copyAddress = () => {
     navigator.clipboard.writeText(address);
-    alert("¡Dirección copiada correctamente!");
+    showNotification("¡Dirección de billetera copiada!", "success");
   };
 
   return (
