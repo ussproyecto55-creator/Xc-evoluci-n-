@@ -48,7 +48,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
   };
 
-  const removeNotification = (id: string) => setNotifications(prev => prev.filter(n => n.id !== id));
+  const removeNotification = (id: string) => setNotifications(prev => setNotifications(prev.filter(n => n.id !== id)));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,13 +84,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const endTime = new Date(user.activeBet.endTime);
       if (now >= endTime) {
         completeBet(user.id, user.activeBet.amount, user.activeBet.potentialProfit);
+      } else {
+        // Si aún no termina, poner un timer para cuando termine
+        const remaining = endTime.getTime() - now.getTime();
+        setTimeout(() => completeBet(user.id, user.activeBet.amount, user.activeBet.potentialProfit), remaining);
       }
     }
-  }, [user]);
+  }, [user?.activeBet]);
 
   const completeBet = async (userId: string, capital: number, profit: number) => {
     const { data: freshUser } = await supabase.from('users').select('*').eq('id', userId).single();
     if (freshUser && freshUser.activeBet) {
+      // El capital ya se restó al iniciar. Ahora sumamos capital + ganancia.
       const totalReturn = capital + profit;
       await adminUpdateUser(freshUser.id, { 
         balance: freshUser.balance + totalReturn,
@@ -99,7 +104,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await addTransactionForUser(freshUser.id, {
         type: 'earning',
         amount: profit,
-        description: `Retorno de Capital + Interés 2.5% (+${totalReturn.toFixed(2)} USDT)`
+        description: `Retorno Arbitraje Finalizado (+${totalReturn.toFixed(2)} USDT acreditados)`
       });
     }
   };
@@ -147,9 +152,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const activeBet: ActiveBet = { amount, sportId, startTime, endTime, potentialProfit: profit };
 
     try {
+      // Restamos el capital inmediatamente
       await adminUpdateUser(user.id, { balance: user.balance - amount, lastBetDate: startTime, activeBet });
-      await addTransaction({ type: 'bet', amount, description: `Arbitraje Deportivo iniciado (40 min)` });
+      await addTransaction({ type: 'bet', amount, description: `Inversión Auditada: ${amount} USDT` });
       
+      // Programamos la entrega para 40 min
       setTimeout(() => completeBet(user.id, amount, profit), SIMULATION_TIME);
     } catch (err) {
       showNotification("Error de red.", "error");
@@ -159,7 +166,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const withdraw = async (amount: number) => {
     if (!user) return { success: false, message: "Sesión expirada." };
     
-    // REGLA: Solo puede retirar después de 24 horas de su registro/entrada
+    // REGLA: Solo puede retirar después de 24 horas de su registro
     const regDate = new Date(user.registrationDate).getTime();
     const now = new Date().getTime();
     const hoursSinceReg = (now - regDate) / (1000 * 60 * 60);
@@ -170,7 +177,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const currentVIP = VIP_LEVELS[user.vipLevel];
-    if (user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth) return { success: false, message: "Límite de retiros alcanzado." };
+    if (user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth) return { success: false, message: "Límite mensual de retiros alcanzado." };
     if (user.balance < amount) return { success: false, message: "Saldo insuficiente." };
 
     await adminUpdateUser(user.id, { 
@@ -178,8 +185,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       monthlyWithdrawalCount: (user.monthlyWithdrawalCount || 0) + 1,
       lastWithdrawalDate: new Date().toISOString()
     });
-    await addTransaction({ type: 'withdraw', amount, description: `Retiro solicitado`, walletAddress: user.withdrawalAddress });
-    return { success: true, message: "Retiro en auditoría." };
+    await addTransaction({ type: 'withdraw', amount, description: `Solicitud de retiro`, walletAddress: user.withdrawalAddress });
+    return { success: true, message: "Retiro enviado a auditoría." };
   };
 
   const adminUpdateUser = async (userId: string, data: Partial<User>) => {

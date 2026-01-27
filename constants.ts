@@ -14,10 +14,10 @@ export const VIP_LEVELS: VIPLevel[] = [
 
 export const SPORTS: Sport[] = [
   { id: '1', name: 'Baseball', icon: '⚾', baseReturn: 0.025, color: 'from-blue-600 to-blue-800', fakeVolume: '1.42M' },
-  { id: '2', name: 'Football', icon: '🏈', baseReturn: 0.025, color: 'from-orange-600 to-orange-800', fakeVolume: '940K' },
-  { id: '3', name: 'Soccer', icon: '⚽', baseReturn: 0.025, color: 'from-green-600 to-green-800', fakeVolume: '2.15M' },
-  { id: '4', name: 'Tennis', icon: '🎾', baseReturn: 0.025, color: 'from-yellow-500 to-yellow-700', fakeVolume: '620K' },
-  { id: '5', name: 'Golf', icon: '⛳', baseReturn: 0.025, color: 'from-emerald-500 to-emerald-700', fakeVolume: '315K' },
+  { id: '2', name: 'Football', icon: '🏈', baseReturn: 0.021, color: 'from-orange-600 to-orange-800', fakeVolume: '940K' },
+  { id: '3', name: 'Soccer', icon: '⚽', baseReturn: 0.023, color: 'from-green-600 to-green-800', fakeVolume: '2.15M' },
+  { id: '4', name: 'Tennis', icon: '🎾', baseReturn: 0.0185, color: 'from-yellow-500 to-yellow-700', fakeVolume: '620K' },
+  { id: '5', name: 'Golf', icon: '⛳', baseReturn: 0.016, color: 'from-emerald-500 to-emerald-700', fakeVolume: '315K' },
 ];
 
 export const TEAM_REBATES = {

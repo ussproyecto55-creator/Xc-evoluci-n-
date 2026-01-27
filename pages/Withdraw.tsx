@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../store';
 import { VIP_LEVELS, ARRIVAL_TIMES } from '../constants';
-import { ArrowUpFromLine, Info, ShieldAlert, Save, Landmark, CheckCircle2, XCircle, Loader2, Clock, Percent, DollarSign } from 'lucide-react';
+import { ArrowUpFromLine, Info, ShieldAlert, Save, Landmark, CheckCircle2, XCircle, Loader2, Clock, Percent, DollarSign, ShieldCheck } from 'lucide-react';
 
 export const Withdraw: React.FC = () => {
   const { user, withdraw, saveWithdrawalAddress, showNotification } = useApp();
@@ -19,6 +19,13 @@ export const Withdraw: React.FC = () => {
 
   if (!user) return null;
   const currentVIP = VIP_LEVELS[user.vipLevel];
+
+  // Cálculo de bloqueo de 24h
+  const regDate = new Date(user.registrationDate).getTime();
+  const now = new Date().getTime();
+  const hoursSinceReg = (now - regDate) / (1000 * 60 * 60);
+  const isLockedBySecurity = hoursSinceReg < 24;
+  const remainingHours = (24 - hoursSinceReg).toFixed(1);
 
   // Cálculo en vivo
   const withdrawalAmount = parseFloat(amount) || 0;
@@ -45,6 +52,10 @@ export const Withdraw: React.FC = () => {
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLockedBySecurity) {
+      showNotification(`Seguridad Nexus: Primer retiro disponible en ${remainingHours} horas.`, "error");
+      return;
+    }
     if (!amount) {
       showNotification("Ingrese el monto a retirar", "error");
       return;
@@ -78,12 +89,27 @@ export const Withdraw: React.FC = () => {
   return (
     <div className="px-4 py-6 space-y-6 relative">
       <div className="flex flex-col space-y-1">
-        <h2 className="text-2xl font-bold text-slate-100 font-display italic">Gestionar Retiro</h2>
+        <h2 className="text-2xl font-bold text-slate-100 font-display italic">Retiros Nexus</h2>
         <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-amber-500">
            <Clock size={12} />
-           <span>Retiros Abiertos 24/7 • Llegada en {ARRIVAL_TIMES.WITHDRAW}</span>
+           <span>Procesamiento 24/7 • Auditoría en {ARRIVAL_TIMES.WITHDRAW}</span>
         </div>
       </div>
+
+      {isLockedBySecurity && (
+        <div className="bg-red-500/10 border-2 border-red-500/30 p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-lg">
+           <ShieldCheck size={32} className="text-red-500 animate-pulse" />
+           <div className="space-y-1">
+              <h4 className="text-red-500 font-black uppercase text-xs tracking-tight italic">BLOQUEO DE SEGURIDAD NEXUS</h4>
+              <p className="text-[10px] text-slate-200 italic leading-relaxed font-medium">
+                "Por protocolos anti-lavado, tu primer retiro estará disponible tras **24 horas** de tu ingreso a la red."
+              </p>
+           </div>
+           <div className="bg-slate-900/50 px-4 py-1.5 rounded-full border border-red-500/20 text-[9px] font-black text-red-400">
+              TIEMPO RESTANTE: {remainingHours} HORAS
+           </div>
+        </div>
+      )}
 
       {/* Stats VIP del Retiro */}
       <div className="grid grid-cols-2 gap-3">
@@ -149,15 +175,15 @@ export const Withdraw: React.FC = () => {
           </div>
 
           <button 
-            disabled={!user.withdrawalAddress || isProcessing || (user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth}
+            disabled={!user.withdrawalAddress || isProcessing || isLockedBySecurity || (user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth}
             className={`w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center space-x-2 ${
-              !user.withdrawalAddress || isProcessing || (user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth
+              !user.withdrawalAddress || isProcessing || isLockedBySecurity || (user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' 
               : 'gradient-gold text-slate-900 shadow-xl shadow-amber-500/20 active:scale-95'
             }`}
           >
             {isProcessing ? <Loader2 className="animate-spin" size={22} /> : <ArrowUpFromLine size={22} />}
-            <span>{isProcessing ? 'Auditando...' : 'Confirmar Retiro'}</span>
+            <span>{isProcessing ? 'Auditando...' : isLockedBySecurity ? 'Bloqueado por Seguridad' : 'Confirmar Retiro Nexus'}</span>
           </button>
           
           {(user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth && (
