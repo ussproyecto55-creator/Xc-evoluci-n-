@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, TrendingUp, Users, User, ArrowLeftRight, Settings2, Crown } from 'lucide-react';
+import { Home, TrendingUp, Users, User, ArrowLeftRight, Settings2, Crown, Shield } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,18 +17,43 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       {/* Header */}
       <header className="sticky top-0 z-50 glass px-4 py-3 flex justify-between items-center shadow-lg border-b border-white/5">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900">E</div>
-          <span className="font-bold text-lg tracking-tight">Elite Sports</span>
+          <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.5)]">E</div>
+          <span className="font-bold text-lg tracking-tight text-white font-display italic">Elite Sports</span>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-xs text-slate-400">Balance Total</span>
-          <span className="text-amber-400 font-bold text-lg">${balance.toFixed(2)} USDT</span>
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Balance Disponible</span>
+          <span className="text-amber-400 font-black text-lg tracking-tighter">${balance.toFixed(2)} USDT</span>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-md mx-auto">
-        {children}
+      <main className="flex-1 w-full max-w-md mx-auto flex flex-col">
+        <div className="flex-1">
+          {children}
+        </div>
+
+        {/* Footer Section */}
+        <footer className="mt-12 px-6 py-10 border-t border-white/5 bg-slate-950/30 text-center space-y-6">
+          <div className="flex justify-center items-center space-x-3 text-amber-500/40">
+            <Shield size={24} />
+            <div className="h-4 w-px bg-white/10"></div>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Protocolo Elite</span>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-[10px] text-slate-600 font-medium leading-relaxed max-w-[280px] mx-auto italic">
+              Este sitio web es exclusivamente para fines <span className="text-slate-400 font-bold">informativos y de simulación deportiva</span>. Elite Sports no es una entidad bancaria ni ofrece servicios de inversión regulados.
+            </p>
+            
+            <div className="flex justify-center items-center space-x-4 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+              <button onClick={() => console.log("Info: Privacidad manejada por Nexus Protocol.")} className="hover:text-amber-500 transition-colors">Política de Privacidad</button>
+              <div className="w-1 h-1 rounded-full bg-slate-700"></div>
+              <button onClick={() => console.log("Info: Términos de simulación de arbitraje.")} className="hover:text-amber-500 transition-colors">Términos de Servicio</button>
+            </div>
+          </div>
+
+          <p className="text-[8px] text-slate-700 font-bold uppercase tracking-[0.4em]">© 2025 ELITE SPORTS - NEXUS INFRASTRUCTURE</p>
+        </footer>
       </main>
 
       {/* Bottom Nav */}
