@@ -8,6 +8,13 @@ export default defineConfig({
     port: 3000
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      // Aseguramos que no haya externalizaciones accidentales
+      external: []
+    }
+  },
+  optimizeDeps: {
+    include: ['@supabase/supabase-js']
   }
 });
