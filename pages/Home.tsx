@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Zap, X, Info, Clock, Gift, Users, Landmark, Percent, Star } from 'lucide-react';
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Zap, X, Info, Clock, Gift, Users, Landmark, Percent, Star, Send } from 'lucide-react';
 import { useApp } from '../store';
 import { VIP_LEVELS, BUSINESS_HOURS, ARRIVAL_TIMES, FIRST_RECHARGE_BONUS } from '../constants';
 import { Banner } from '../components/Banner';
@@ -40,6 +40,24 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
             
             <div className="p-6 space-y-6 overflow-y-auto bg-slate-900/90 custom-scrollbar">
+              {/* TELEGRAM OFICIAL LINK - NUEVO */}
+              <a 
+                href="https://t.me/+xb9nTH7qSvs0ZjFh" 
+                target="_blank"
+                className="flex items-center justify-between p-4 bg-blue-500/20 border border-blue-500/40 rounded-2xl group active:scale-95 transition-all shadow-lg shadow-blue-500/5"
+              >
+                <div className="flex items-center space-x-3 text-blue-400">
+                  <div className="p-2 bg-blue-500 rounded-lg text-white">
+                    <Send size={20} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[10px] font-black uppercase tracking-widest leading-none">Canal Oficial</p>
+                    <p className="text-[8px] text-blue-300 font-bold mt-1">Únete para noticias y señales</p>
+                  </div>
+                </div>
+                <Zap size={18} className="text-blue-400 animate-pulse" />
+              </a>
+
               {/* BONO BIENVENIDA HIGHLIGHT */}
               <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-1 rounded-3xl shadow-lg">
                 <div className="bg-slate-900 p-5 rounded-[1.4rem] flex flex-col items-center text-center space-y-1">
@@ -79,26 +97,6 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                   <p className="text-[9px] text-slate-400 italic">Llegada en max. 24h.</p>
                 </div>
               </div>
-
-              <section className="space-y-3">
-                <h3 className="text-amber-500 font-black flex items-center space-x-2 text-xs uppercase tracking-[0.2em] ml-1">
-                  <Percent size={14} /> <span>DINÁMICA OPERATIVA</span>
-                </h3>
-                <div className="bg-slate-800/50 p-4 rounded-2xl border border-white/5 space-y-3">
-                  <div className="flex justify-between text-xs items-center">
-                    <span className="text-slate-400">Ventana de Inversión:</span>
-                    <span className="text-slate-100 font-bold italic">11:00 AM - 16:00 PM</span>
-                  </div>
-                  <div className="flex justify-between text-xs items-center">
-                    <span className="text-slate-400">Entrega de Rendimientos:</span>
-                    <span className="text-green-400 font-bold italic">+40 Minutos post-op</span>
-                  </div>
-                  <div className="flex justify-between text-xs items-center border-t border-white/5 pt-2">
-                    <span className="text-slate-400">Límite Diario:</span>
-                    <span className="text-amber-500 font-bold italic">1 Operación / Día</span>
-                  </div>
-                </div>
-              </section>
 
               <div className="flex items-center space-x-3 p-4 bg-slate-900 border border-white/5 rounded-2xl">
                 <Info size={16} className="text-blue-500 shrink-0" />

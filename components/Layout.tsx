@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, TrendingUp, Users, User, ArrowLeftRight, Settings2, Crown, Shield } from 'lucide-react';
+import { Home, TrendingUp, Users, User, ArrowLeftRight, Settings2, Crown, Shield, Send } from 'lucide-react';
 import { useApp } from '../store';
 
 interface LayoutProps {
@@ -43,7 +43,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             <span className="text-[10px] font-black uppercase tracking-[0.3em]">Protocolo Elite</span>
           </div>
 
-          <div className="space-y-4">
+          <div className="flex flex-col items-center space-y-4">
+            <a 
+              href="https://t.me/+xb9nTH7qSvs0ZjFh" 
+              target="_blank" 
+              className="flex items-center space-x-2 px-6 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all"
+            >
+              <Send size={14} />
+              <span>Unirse al Grupo Oficial</span>
+            </a>
+            
             <p className="text-[10px] text-slate-600 font-medium leading-relaxed max-w-[280px] mx-auto italic">
               Este sitio web es exclusivamente para fines <span className="text-slate-400 font-bold">informativos y de simulación deportiva</span>. Elite Sports no es una entidad bancaria ni ofrece servicios de inversión regulados.
             </p>

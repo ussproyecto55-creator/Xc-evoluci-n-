@@ -4,7 +4,7 @@ import { useApp } from '../store';
 import { 
   LogOut, Settings, HelpCircle, Shield, ChevronRight, 
   UserCircle2, Calendar, Crown, Gem, Zap, CheckCircle,
-  MessageCircle, Users as UsersIcon, Lock, Wallet, Save
+  MessageCircle, Users as UsersIcon, Lock, Wallet, Save, ExternalLink
 } from 'lucide-react';
 import { VIP_LEVELS } from '../constants';
 
@@ -137,26 +137,36 @@ export const Profile: React.FC = () => {
 
       <div className="space-y-3">
         <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-2 mb-4">Atención al Inversor</h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
            <a 
             href="https://t.me/Elitesportsm" 
             target="_blank" 
-            className="glass p-5 rounded-3xl border border-white/5 flex flex-col items-center space-y-3 hover:bg-white/5 transition-all"
+            className="glass p-4 rounded-3xl border border-white/5 flex flex-col items-center space-y-2 hover:bg-white/5 transition-all text-center"
            >
-              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                 <MessageCircle size={24} />
+              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                 <MessageCircle size={20} />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest">Soporte 24/7</span>
+              <span className="text-[8px] font-bold uppercase tracking-widest">Soporte</span>
            </a>
            <a 
             href="https://t.me/nexus_official_group" 
             target="_blank" 
-            className="glass p-5 rounded-3xl border border-white/5 flex flex-col items-center space-y-3 hover:bg-white/5 transition-all"
+            className="glass p-4 rounded-3xl border border-white/5 flex flex-col items-center space-y-2 hover:bg-white/5 transition-all text-center"
            >
-              <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400">
-                 <UsersIcon size={24} />
+              <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+                 <UsersIcon size={20} />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest">Comunidad</span>
+              <span className="text-[8px] font-bold uppercase tracking-widest">Chat</span>
+           </a>
+           <a 
+            href="https://t.me/+xb9nTH7qSvs0ZjFh" 
+            target="_blank" 
+            className="glass p-4 rounded-3xl border border-amber-500/20 flex flex-col items-center space-y-2 hover:bg-amber-500/10 transition-all text-center bg-amber-500/5"
+           >
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500">
+                 <ExternalLink size={20} />
+              </div>
+              <span className="text-[8px] font-bold uppercase tracking-widest text-amber-500">Grupo</span>
            </a>
         </div>
       </div>
