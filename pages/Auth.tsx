@@ -27,15 +27,30 @@ export const Auth: React.FC = () => {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) return alert("Por favor complete todos los campos.");
-    if (!isLogin && password !== confirmPassword) return alert("Las contraseñas no coinciden.");
-    if (!isLogin && !acceptTerms) return alert("Debe aceptar los términos y condiciones.");
+    if (!username || !password) return; // No alert needed for empty basic fields in a professional app
+    if (!isLogin && password !== confirmPassword) {
+      alert("Las contraseñas no coinciden.");
+      return;
+    }
+    if (!isLogin && !acceptTerms) {
+      alert("Debe aceptar los términos y condiciones.");
+      return;
+    }
     
-    const result = login(username, password, !isLogin, !isLogin ? referralCode : undefined);
-    if (!result.success) {
-      alert(result.message);
+    try {
+      const result = await login(username, password, !isLogin, !isLogin ? referralCode : undefined);
+      if (result && !result.success) {
+        if (result.message) {
+          alert(result.message);
+        } else {
+          console.warn("Login fallido sin mensaje definido.");
+        }
+      }
+    } catch (error) {
+      console.error("Error durante la autenticación:", error);
+      // No alertar errores técnicos de conexión al usuario final según las instrucciones
     }
   };
 

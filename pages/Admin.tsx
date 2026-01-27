@@ -25,23 +25,31 @@ export const AdminPanel: React.FC = () => {
   const pendingRecharges = allTransactions.filter(t => t.type === 'recharge' && t.status === 'pending');
   const pendingWithdrawals = allTransactions.filter(t => t.type === 'withdraw' && t.status === 'pending');
 
-  const totalInvestment = allUsers.reduce((acc, u) => acc + u.totalRecharge, 0);
+  const totalInvestment = allUsers.reduce((acc, u) => acc + (u.totalRecharge || 0), 0);
 
   const handleEditUser = (u: User) => {
     setEditingUser({ ...u });
   };
 
-  const saveUserChanges = () => {
+  const saveUserChanges = async () => {
     if (!editingUser) return;
-    adminUpdateUser(editingUser.id, editingUser);
-    setEditingUser(null);
-    alert("Usuario actualizado correctamente");
+    try {
+      await adminUpdateUser(editingUser.id, editingUser);
+      setEditingUser(null);
+      alert("Usuario actualizado correctamente");
+    } catch (err) {
+      console.error("Error al guardar cambios de usuario:", err);
+    }
   };
 
-  const forceWeeklyPayout = () => {
+  const forceWeeklyPayout = async () => {
     if (window.confirm("¿Seguro que deseas forzar la entrega de comisiones pendientes ahora?")) {
-      processWeeklyCommissions();
-      alert("Comisiones entregadas.");
+      try {
+        await processWeeklyCommissions();
+        alert("Comisiones entregadas.");
+      } catch (err) {
+        console.error("Error al forzar pago semanal:", err);
+      }
     }
   };
 
@@ -265,7 +273,6 @@ export const AdminPanel: React.FC = () => {
            <div className="relative max-w-full max-h-[90vh] flex flex-col items-center">
               <div className="bg-amber-500 text-slate-900 px-6 py-2 rounded-t-2xl font-black uppercase text-xs flex items-center space-x-4">
                  <div className="flex items-center space-x-2">
-                    {/* Fixed: Use UserIcon instead of User type to avoid conflict */}
                     <UserIcon size={14} />
                     <span>{viewProofTx.username}</span>
                  </div>

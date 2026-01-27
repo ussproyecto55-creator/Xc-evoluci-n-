@@ -27,36 +27,42 @@ export const Withdraw: React.FC = () => {
   const feeAmount = (withdrawalAmount * feePercent) / 100;
   const netAmount = Math.max(0, withdrawalAmount - feeAmount);
 
-  const handleSaveWallet = () => {
+  const handleSaveWallet = async () => {
     if (!wallet) return setFeedback({ type: 'error', message: "Ingrese una dirección válida" });
     setIsSaving(true);
-    setTimeout(() => {
-      saveWithdrawalAddress(wallet);
-      setIsSaving(false);
+    try {
+      await saveWithdrawalAddress(wallet);
       setFeedback({ type: 'success', message: "Billetera guardada correctamente" });
+    } catch (error) {
+      console.error("Error al guardar billetera:", error);
+    } finally {
+      setIsSaving(false);
       setTimeout(() => setFeedback(null), 3000);
-    }, 1000);
+    }
   };
 
-  const handleWithdraw = (e: React.FormEvent) => {
+  const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return setFeedback({ type: 'error', message: "Ingrese el monto a retirar" });
     if (parseFloat(amount) < 10) return setFeedback({ type: 'error', message: "El retiro mínimo es de 10 USDT" });
     if (!wallet) return setFeedback({ type: 'error', message: "Debe guardar una billetera antes de retirar" });
 
     setIsProcessing(true);
-    setTimeout(() => {
-      const result = withdraw(parseFloat(amount));
-      setIsProcessing(false);
-      
-      if (result.success) {
-        setFeedback({ type: 'success', message: result.message });
+    try {
+      const result = await withdraw(parseFloat(amount));
+      if (result && result.success) {
+        setFeedback({ type: 'success', message: result.message || "Operación realizada correctamente" });
         setAmount('');
-      } else {
-        setFeedback({ type: 'error', message: result.message });
+      } else if (result) {
+        setFeedback({ type: 'error', message: result.message || "Error al procesar el retiro" });
       }
+    } catch (error) {
+      console.error("Error crítico en el retiro:", error);
+      setFeedback({ type: 'error', message: "Error de conexión con el servidor" });
+    } finally {
+      setIsProcessing(false);
       setTimeout(() => setFeedback(null), 5000);
-    }, 1500);
+    }
   };
 
   return (
@@ -149,9 +155,9 @@ export const Withdraw: React.FC = () => {
           </div>
 
           <button 
-            disabled={!user.withdrawalAddress || isProcessing || user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth}
+            disabled={!user.withdrawalAddress || isProcessing || (user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth}
             className={`w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center space-x-2 ${
-              !user.withdrawalAddress || isProcessing || user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth
+              !user.withdrawalAddress || isProcessing || (user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' 
               : 'gradient-gold text-slate-900 shadow-xl shadow-amber-500/20 active:scale-95'
             }`}
@@ -160,7 +166,7 @@ export const Withdraw: React.FC = () => {
             <span>{isProcessing ? 'Auditando...' : 'Confirmar Retiro'}</span>
           </button>
           
-          {user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth && (
+          {(user.monthlyWithdrawalCount || 0) >= currentVIP.withdrawalsPerMonth && (
              <p className="text-[9px] text-red-400 italic text-center animate-pulse">
                 Límite de retiros mensuales alcanzado para tu VIP.
              </p>

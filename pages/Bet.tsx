@@ -64,7 +64,7 @@ export const Bet: React.FC = () => {
     setShowSummary(true);
   };
 
-  const executeBet = () => {
+  const executeBet = async () => {
     if (!user || !selectedSport || betting) return;
     const amount = parseFloat(betAmount);
     
@@ -77,14 +77,20 @@ export const Bet: React.FC = () => {
     const isBoosted = selectedSport.id === dailyBoostId;
     const rate = isBoosted ? dailyRate : selectedSport.baseReturn;
 
-    setTimeout(() => {
-      applyCompoundInterest(amount, rate * 100, selectedSport.id);
+    try {
+      // Simular un pequeño retardo de procesamiento UI
+      await new Promise(res => setTimeout(res, 1500));
+      await applyCompoundInterest(amount, rate * 100, selectedSport.id);
+      
       setBetting(false);
       setSelectedSport(null);
       setShowSummary(false);
       setDone(true);
       setTimeout(() => setDone(false), 5000);
-    }, 1500);
+    } catch (error) {
+      console.error("Error al ejecutar la inversión:", error);
+      setBetting(false);
+    }
   };
 
   const adjustAmount = (delta: number) => {
@@ -261,7 +267,6 @@ export const Bet: React.FC = () => {
         </div>
       </div>
 
-      {/* Modales y otros (se mantienen igual) */}
       {selectedSport && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => { setSelectedSport(null); setShowSummary(false); }}></div>

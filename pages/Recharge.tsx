@@ -14,23 +14,36 @@ export const Recharge: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || parseFloat(amount) < 10) return alert("La recarga mínima es de 10 USDT");
-    if (!proof) return alert("Por favor suba el comprobante de pago");
+    if (!amount || parseFloat(amount) < 10) {
+      alert("La recarga mínima es de 10 USDT");
+      return;
+    }
+    if (!proof) {
+      alert("Por favor suba el comprobante de pago");
+      return;
+    }
 
     setIsSubmitting(true);
     
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      recharge(parseFloat(amount), base64String);
-      setIsSubmitting(false);
-      setSuccess(true);
-      setProof(null);
-      setAmount('10');
-      setTimeout(() => setSuccess(false), 6000);
+    reader.onloadend = async () => {
+      try {
+        const base64String = reader.result as string;
+        if (base64String) {
+          await recharge(parseFloat(amount), base64String);
+          setSuccess(true);
+          setProof(null);
+          setAmount('10');
+          setTimeout(() => setSuccess(false), 6000);
+        }
+      } catch (err) {
+        console.error("Error al procesar la recarga:", err);
+      } finally {
+        setIsSubmitting(false);
+      }
     };
     reader.onerror = () => {
-      alert("Error al procesar la imagen");
+      console.error("Error al leer el archivo de imagen");
       setIsSubmitting(false);
     };
     reader.readAsDataURL(proof);

@@ -24,17 +24,25 @@ export const Profile: React.FC = () => {
     return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     if (!newPassword) return;
-    adminUpdateUser(user.id, { password: newPassword });
-    setNewPassword('');
-    alert("Contraseña actualizada con éxito.");
+    try {
+      await adminUpdateUser(user.id, { password: newPassword });
+      setNewPassword('');
+      alert("Contraseña actualizada con éxito.");
+    } catch (err) {
+      console.error("Error al actualizar contraseña:", err);
+    }
   };
 
-  const handleUpdateWallet = () => {
+  const handleUpdateWallet = async () => {
     if (!newWallet) return;
-    saveWithdrawalAddress(newWallet);
-    alert("Billetera configurada con éxito.");
+    try {
+      await saveWithdrawalAddress(newWallet);
+      alert("Billetera configurada con éxito.");
+    } catch (err) {
+      console.error("Error al configurar billetera:", err);
+    }
   };
 
   if (showSettings) {
