@@ -6,10 +6,18 @@ import { ArrowDownLeft, ArrowUpRight, TrendingUp, Gift, Wallet, Filter, Clock, C
 type FilterType = 'all' | 'recharge' | 'withdraw' | 'earning' | 'team';
 
 export const FinancialRecords: React.FC = () => {
-  const { transactions } = useApp();
+  const { user, allTransactions } = useApp();
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
-  const filteredTransactions = transactions.filter(tx => {
+  if (!user) return null;
+
+  // Defensivo: Si por alguna razón allTransactions no está listo
+  const transactionsList = allTransactions || [];
+
+  // Filter transactions for the current user
+  const userTransactions = transactionsList.filter(tx => tx.userId === user.id);
+
+  const filteredTransactions = userTransactions.filter(tx => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'team') return tx.type === 'rebate' || tx.type === 'bonus';
     return tx.type === activeFilter;

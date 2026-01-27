@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../store';
-import { VIP_LEVELS } from '../constants';
-import { ArrowUpFromLine, Info, ShieldAlert, Save, Landmark } from 'lucide-react';
+import { VIP_LEVELS, ARRIVAL_TIMES } from '../constants';
+import { ArrowUpFromLine, Info, ShieldAlert, Save, Landmark, CheckCircle2, XCircle, Loader2, Clock, Percent, DollarSign } from 'lucide-react';
 
 export const Withdraw: React.FC = () => {
   const { user, withdraw, saveWithdrawalAddress } = useApp();
   const [amount, setAmount] = useState('');
   const [wallet, setWallet] = useState(user?.withdrawalAddress || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     if (user?.withdrawalAddress) {
@@ -19,58 +21,85 @@ export const Withdraw: React.FC = () => {
   if (!user) return null;
   const currentVIP = VIP_LEVELS[user.vipLevel];
 
+  // Cálculo en vivo
+  const withdrawalAmount = parseFloat(amount) || 0;
+  const feePercent = currentVIP.commission;
+  const feeAmount = (withdrawalAmount * feePercent) / 100;
+  const netAmount = Math.max(0, withdrawalAmount - feeAmount);
+
   const handleSaveWallet = () => {
-    if (!wallet) return alert("Ingrese una dirección válida");
+    if (!wallet) return setFeedback({ type: 'error', message: "Ingrese una dirección válida" });
     setIsSaving(true);
     setTimeout(() => {
       saveWithdrawalAddress(wallet);
       setIsSaving(false);
-      alert("Billetera guardada correctamente");
+      setFeedback({ type: 'success', message: "Billetera guardada correctamente" });
+      setTimeout(() => setFeedback(null), 3000);
     }, 1000);
   };
 
   const handleWithdraw = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount) return alert("Ingrese el monto");
-    if (!wallet) return alert("Debe guardar una billetera antes de retirar");
-    withdraw(parseFloat(amount));
+    if (!amount) return setFeedback({ type: 'error', message: "Ingrese el monto a retirar" });
+    if (parseFloat(amount) < 10) return setFeedback({ type: 'error', message: "El retiro mínimo es de 10 USDT" });
+    if (!wallet) return setFeedback({ type: 'error', message: "Debe guardar una billetera antes de retirar" });
+
+    setIsProcessing(true);
+    setTimeout(() => {
+      const result = withdraw(parseFloat(amount));
+      setIsProcessing(false);
+      
+      if (result.success) {
+        setFeedback({ type: 'success', message: result.message });
+        setAmount('');
+      } else {
+        setFeedback({ type: 'error', message: result.message });
+      }
+      setTimeout(() => setFeedback(null), 5000);
+    }, 1500);
   };
 
-  const commissionFee = (parseFloat(amount) || 0) * (currentVIP.commission / 100);
-
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="px-4 py-6 space-y-6 relative">
       <div className="flex flex-col space-y-1">
         <h2 className="text-2xl font-bold text-slate-100 font-display italic">Gestionar Retiro</h2>
-        <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest flex items-center space-x-1">
-          <Landmark size={12} />
-          <span>Capital 100% Retirable en cualquier momento</span>
-        </p>
-      </div>
-
-      <div className="glass rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5">
-        <div className="flex items-start space-x-3">
-          <Info className="text-amber-500 shrink-0 mt-1" size={18} />
-          <p className="text-[11px] text-slate-300 italic leading-relaxed">
-            Puedes retirar tanto tus ganancias como tu capital inicial cuando lo desees. Los retiros se procesan de 1 a 24 horas. Mínimo de retiro: <span className="text-amber-500 font-bold">10 USDT</span>.
-          </p>
+        <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-amber-500">
+           <Clock size={12} />
+           <span>Retiros Abiertos 24/7 • Llegada en {ARRIVAL_TIMES.WITHDRAW}</span>
         </div>
       </div>
 
-      {user.vipLevel === 0 && (
-        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start space-x-3 text-red-400">
-          <ShieldAlert size={20} className="shrink-0" />
-          <div className="space-y-1">
-            <p className="font-bold text-sm">VIP Requerido</p>
-            <p className="text-xs">Debes activar al menos el VIP 1 (Mín. $10) para habilitar retiros.</p>
+      {feedback && (
+        <div className={`fixed top-20 left-4 right-4 z-[100] glass border-2 p-5 rounded-[2rem] flex items-center space-x-4 animate-in slide-in-from-top duration-500 shadow-2xl ${
+          feedback.type === 'success' ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'
+        }`}>
+          <div className={`p-2 rounded-full text-white ${feedback.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+            {feedback.type === 'success' ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
+          </div>
+          <div className="flex-1">
+            <h4 className={`font-black text-sm italic uppercase ${feedback.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+              {feedback.type === 'success' ? 'Operación Exitosa' : 'Error de Operación'}
+            </h4>
+            <p className="text-[10px] text-slate-200">{feedback.message}</p>
           </div>
         </div>
       )}
 
+      {/* Stats VIP del Retiro */}
+      <div className="grid grid-cols-2 gap-3">
+         <div className="glass p-4 rounded-2xl border border-white/5 space-y-1">
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Comisión VIP</p>
+            <p className="text-lg font-black text-amber-500 font-display">{currentVIP.commission}%</p>
+         </div>
+         <div className="glass p-4 rounded-2xl border border-white/5 space-y-1">
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Retiros Mes</p>
+            <p className="text-lg font-black text-slate-100 font-display">{user.monthlyWithdrawalCount} / {currentVIP.withdrawalsPerMonth}</p>
+         </div>
+      </div>
+
       <div className="glass rounded-2xl p-6 border border-white/5 space-y-6">
-        {/* Wallet Saver */}
         <div className="space-y-3">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Billetera de Retiro (TRC20 / BEP20)</label>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Billetera de Retiro (USDT TRC20/BEP20)</label>
           <div className="flex space-x-2">
             <input 
               type="text" 
@@ -84,7 +113,7 @@ export const Withdraw: React.FC = () => {
               disabled={isSaving}
               className="px-4 bg-slate-800 border border-white/10 rounded-xl text-amber-500 hover:bg-slate-700 active:scale-95 transition-all"
             >
-              {isSaving ? <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent animate-spin rounded-full" /> : <Save size={18} />}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-amber-500" /> : <Save size={18} />}
             </button>
           </div>
         </div>
@@ -104,31 +133,37 @@ export const Withdraw: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 bg-slate-800/50 rounded-2xl border border-white/5 space-y-3">
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-500">Comisión VIP ({currentVIP.commission}%):</span>
-              <span className="text-red-400 font-bold">-${commissionFee.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg border-t border-white/5 pt-3">
-              <span className="text-slate-300">Neto a Recibir:</span>
-              <span className="text-green-400">${(Math.max(0, (parseFloat(amount) || 0) - commissionFee)).toFixed(2)}</span>
-            </div>
+          {/* Recuadro de Cálculo Automático */}
+          <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5 space-y-3">
+             <div className="flex justify-between items-center text-[10px]">
+                <span className="text-slate-500 font-bold uppercase tracking-widest">Comisión Automática ({currentVIP.commission}%)</span>
+                <span className="text-red-400 font-black italic">-${feeAmount.toFixed(2)} USDT</span>
+             </div>
+             <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                <span className="text-xs text-slate-300 font-bold uppercase tracking-widest flex items-center space-x-2">
+                   <Landmark size={14} className="text-amber-500" />
+                   <span>Recibirás en Billetera</span>
+                </span>
+                <span className="text-xl font-black text-green-400 font-display italic">${netAmount.toFixed(2)}</span>
+             </div>
           </div>
 
           <button 
-            disabled={user.vipLevel === 0 || !user.withdrawalAddress}
+            disabled={!user.withdrawalAddress || isProcessing || user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth}
             className={`w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center space-x-2 ${
-              user.vipLevel === 0 || !user.withdrawalAddress 
+              !user.withdrawalAddress || isProcessing || user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' 
               : 'gradient-gold text-slate-900 shadow-xl shadow-amber-500/20 active:scale-95'
             }`}
           >
-            <ArrowUpFromLine size={22} />
-            <span>Confirmar Retiro</span>
+            {isProcessing ? <Loader2 className="animate-spin" size={22} /> : <ArrowUpFromLine size={22} />}
+            <span>{isProcessing ? 'Auditando...' : 'Confirmar Retiro'}</span>
           </button>
           
-          {!user.withdrawalAddress && (
-            <p className="text-[9px] text-center text-red-500 font-bold uppercase animate-pulse italic">¡Guarda tu dirección de billetera arriba para habilitar el retiro!</p>
+          {user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth && (
+             <p className="text-[9px] text-red-400 italic text-center animate-pulse">
+                Límite de retiros mensuales alcanzado para tu VIP.
+             </p>
           )}
         </form>
       </div>

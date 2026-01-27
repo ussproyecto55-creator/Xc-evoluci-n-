@@ -1,12 +1,86 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../store';
-import { Users, Copy, Gift, BarChart3, ChevronRight, UserCircle2 } from 'lucide-react';
-import { TEAM_REBATES } from '../constants';
+import { Users, Copy, Gift, BarChart3, ChevronRight, UserCircle2, Clock, Zap, Target, Activity, Landmark } from 'lucide-react';
+import { TeamMember, Transaction } from '../types';
 
 export const Team: React.FC = () => {
-  const { user, team } = useApp();
+  const { user, allUsers, allTransactions } = useApp();
   const [viewDetail, setViewDetail] = useState(false);
+
+  // Fecha de referencia para estadísticas diarias (24h)
+  const last24h = useMemo(() => new Date(Date.now() - 24 * 60 * 60 * 1000), []);
+  const todayDateStr = new Date().toDateString();
+
+  const teamStats = useMemo(() => {
+    if (!user || !allUsers) return { members: [], dailyNew: 0, dailyRecharge: 0, totalRecharge: 0, totalTeamUsers: 0 };
+
+    const members: TeamMember[] = [];
+    let dailyNew = 0;
+    let dailyRechargeAmount = 0;
+    let totalRechargeAmount = 0;
+
+    const teamUserIds = new Set<string>();
+
+    const level1Users = allUsers.filter(u => u.referredBy === user.referralCode);
+    level1Users.forEach(u1 => {
+      teamUserIds.add(u1.id);
+      if (new Date(u1.registrationDate) > last24h) dailyNew++;
+      members.push({
+        username: u1.username,
+        level: 1,
+        recharged: u1.totalRecharge > 0,
+        totalRecharge: u1.totalRecharge,
+        registrationDate: new Date(u1.registrationDate).toLocaleDateString(),
+        hasBetToday: u1.lastBetDate ? new Date(u1.lastBetDate).toDateString() === todayDateStr : false
+      });
+
+      const level2Users = allUsers.filter(u => u.referredBy === u1.referralCode);
+      level2Users.forEach(u2 => {
+        teamUserIds.add(u2.id);
+        if (new Date(u2.registrationDate) > last24h) dailyNew++;
+        members.push({
+          username: u2.username,
+          level: 2,
+          recharged: u2.totalRecharge > 0,
+          totalRecharge: u2.totalRecharge,
+          registrationDate: new Date(u2.registrationDate).toLocaleDateString(),
+          hasBetToday: u2.lastBetDate ? new Date(u2.lastBetDate).toDateString() === todayDateStr : false
+        });
+
+        const level3Users = allUsers.filter(u => u.referredBy === u2.referralCode);
+        level3Users.forEach(u3 => {
+          teamUserIds.add(u3.id);
+          if (new Date(u3.registrationDate) > last24h) dailyNew++;
+          members.push({
+            username: u3.username,
+            level: 3,
+            recharged: u3.totalRecharge > 0,
+            totalRecharge: u3.totalRecharge,
+            registrationDate: new Date(u3.registrationDate).toLocaleDateString(),
+            hasBetToday: u3.lastBetDate ? new Date(u3.lastBetDate).toDateString() === todayDateStr : false
+          });
+        });
+      });
+    });
+
+    allTransactions.forEach(tx => {
+      if (teamUserIds.has(tx.userId) && tx.type === 'recharge' && tx.status === 'completed') {
+        totalRechargeAmount += tx.amount;
+        if (new Date(tx.date) > last24h) {
+          dailyRechargeAmount += tx.amount;
+        }
+      }
+    });
+
+    return { 
+      members, 
+      dailyNew, 
+      dailyRecharge: dailyRechargeAmount, 
+      totalRecharge: totalRechargeAmount,
+      totalTeamUsers: teamUserIds.size
+    };
+  }, [user, allUsers, allTransactions, last24h, todayDateStr]);
 
   if (!user) return null;
 
@@ -16,44 +90,43 @@ export const Team: React.FC = () => {
     alert("¡Enlace de referido copiado!");
   };
 
-  const level1 = team.filter(m => m.level === 1);
-  const level2 = team.filter(m => m.level === 2);
-  const level3 = team.filter(m => m.level === 3);
-
-  const totalRecharge = team.reduce((acc, curr) => acc + curr.totalRecharge, 0);
-  const rechargedCount = team.filter(m => m.recharged).length;
+  const level1 = teamStats.members.filter(m => m.level === 1);
+  const level2 = teamStats.members.filter(m => m.level === 2);
+  const level3 = teamStats.members.filter(m => m.level === 3);
 
   if (viewDetail) {
     return (
-      <div className="px-4 py-6 space-y-6">
+      <div className="px-4 py-6 space-y-6 pb-24">
         <button onClick={() => setViewDetail(false)} className="text-amber-500 font-bold flex items-center space-x-1">
           <ChevronRight size={18} className="rotate-180" />
-          <span>Volver al equipo</span>
+          <span>Volver a Estadísticas</span>
         </button>
-        <h2 className="text-xl font-bold text-slate-100 italic">Lista de Miembros</h2>
+        <div className="flex flex-col space-y-1">
+          <h2 className="text-2xl font-bold text-slate-100 font-display italic uppercase tracking-tighter">Auditoría de Red</h2>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Control de Actividad Diaria</p>
+        </div>
+
         <div className="space-y-3">
-          {team.map((member, i) => (
-            <div key={i} className="glass p-4 rounded-xl border border-white/5 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="bg-slate-800 p-2 rounded-lg text-slate-400">
-                  <UserCircle2 size={24} />
+          {teamStats.members.map((member, i) => (
+            <div key={i} className="glass p-4 rounded-3xl border border-white/5 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className={`w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center ${member.hasBetToday ? 'text-green-500' : 'text-slate-500'}`}>
+                  <UserCircle2 size={32} />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-100">{member.username}</p>
-                  <p className="text-xs text-slate-500">Nivel {member.level} • {member.registrationDate}</p>
+                  <p className="font-bold text-slate-100 italic">{member.username}</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase">Nivel {member.level} • {member.registrationDate}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-amber-500">${member.totalRecharge.toFixed(2)}</p>
-                <p className={`text-[10px] uppercase font-bold ${member.recharged ? 'text-green-500' : 'text-slate-600'}`}>
-                  {member.recharged ? 'Activo' : 'Inactivo'}
-                </p>
+              <div className="text-right space-y-1">
+                <p className="text-sm font-black text-amber-500">${member.totalRecharge.toFixed(2)}</p>
+                <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${member.hasBetToday ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                   <Target size={10} />
+                   <span>{member.hasBetToday ? 'Operó Hoy' : 'Sin Operar'}</span>
+                </div>
               </div>
             </div>
           ))}
-          {team.length === 0 && (
-            <p className="text-center text-slate-500 italic text-sm py-10">Aún no tienes miembros en tu equipo.</p>
-          )}
         </div>
       </div>
     );
@@ -61,90 +134,108 @@ export const Team: React.FC = () => {
 
   return (
     <div className="px-4 py-6 space-y-6 pb-24">
-      {/* Referral Link Box */}
-      <div className="glass rounded-2xl p-6 border-2 border-amber-500/20 space-y-4">
+      <div className="flex flex-col space-y-1">
+        <h2 className="text-2xl font-bold text-slate-100 font-display italic uppercase tracking-tighter">Panel de Equipo</h2>
+        <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">Gestión de Dividendos de Lunes</p>
+      </div>
+
+      <div className="glass rounded-[2rem] p-6 border-2 border-blue-500/20 bg-blue-500/5 flex items-center justify-between shadow-lg">
+        <div className="space-y-1">
+           <div className="flex items-center space-x-2 text-blue-400">
+              <Clock size={16} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Acumulado Lunes 12PM</span>
+           </div>
+           <p className="text-2xl font-black text-white italic font-display">${user.pendingCommissions.toFixed(2)} USDT</p>
+           <p className="text-[8px] text-slate-400 font-bold uppercase italic">7% L1 • 3% L2 • 2% L3 sobre ganancias de red</p>
+        </div>
+        <div className="bg-blue-500/10 p-4 rounded-2xl">
+           <Landmark size={32} className="text-blue-500" />
+        </div>
+      </div>
+
+      <div className="glass rounded-[2rem] p-6 border border-amber-500/20 bg-amber-500/5 space-y-5">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-slate-200 uppercase tracking-widest text-xs">Invitación Personal</h3>
-          <span className="text-amber-500 font-bold font-display tracking-widest">{user.referralCode}</span>
-        </div>
-        <button 
-          onClick={copyRefLink}
-          className="w-full flex items-center justify-center space-x-2 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold border border-white/10 active:scale-95 transition-all"
-        >
-          <Copy size={18} />
-          <span>Copiar Enlace para Compartir</span>
-        </button>
-      </div>
-
-      {/* Rebate Info - FIXED PERCENTAGE DISPLAY */}
-      <div className="glass rounded-xl p-5 border border-white/5 space-y-4">
-        <div className="flex items-center space-x-2 text-amber-500">
-          <Gift size={20} />
-          <h3 className="font-bold text-sm uppercase">Comisión por Rendimiento</h3>
-        </div>
-        <p className="text-xs text-slate-400 italic">Cada lunes recibirás un porcentaje de las ganancias totales generadas por tu equipo.</p>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="text-center p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-            <span className="block text-[10px] uppercase font-bold text-blue-400 mb-1">Nivel 1</span>
-            <span className="text-lg font-bold text-slate-100">{(TEAM_REBATES.LEVEL_1 * 100).toFixed(0)}%</span>
+          <div className="space-y-0.5">
+             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Código de Invitación</p>
+             <h3 className="font-bold text-lg text-slate-100 italic">{user.referralCode}</h3>
           </div>
-          <div className="text-center p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
-            <span className="block text-[10px] uppercase font-bold text-purple-400 mb-1">Nivel 2</span>
-            <span className="text-lg font-bold text-slate-100">{(TEAM_REBATES.LEVEL_2 * 100).toFixed(0)}%</span>
-          </div>
-          <div className="text-center p-3 rounded-xl bg-pink-500/10 border border-pink-500/20">
-            <span className="block text-[10px] uppercase font-bold text-pink-400 mb-1">Nivel 3</span>
-            <span className="text-lg font-bold text-slate-100">{(TEAM_REBATES.LEVEL_3 * 100).toFixed(0)}%</span>
-          </div>
+          <button 
+            onClick={copyRefLink}
+            className="p-4 bg-amber-500 text-slate-900 rounded-2xl shadow-xl shadow-amber-500/20 active:scale-90 transition-all"
+          >
+            <Copy size={20} />
+          </button>
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="glass p-4 rounded-xl space-y-1">
-          <BarChart3 size={16} className="text-blue-500 mb-2" />
-          <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Volumen Equipo</p>
-          <p className="text-lg font-bold text-slate-100">${totalRecharge.toLocaleString()}</p>
-        </div>
-        <div className="glass p-4 rounded-xl space-y-1">
-          <Users size={16} className="text-green-500 mb-2" />
-          <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Activos Reales</p>
-          <p className="text-lg font-bold text-slate-100">{rechargedCount}</p>
+      <div className="space-y-4">
+        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Estadísticas Diarias (24h)</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="glass p-5 rounded-[2.5rem] border border-amber-500/10 bg-slate-800/20 space-y-2">
+             <div className="flex items-center space-x-2 text-amber-500">
+                <Zap size={16} />
+                <span className="text-[9px] font-black uppercase tracking-widest">Recarga Equipo</span>
+             </div>
+             <p className="text-2xl font-black text-slate-100 font-display italic">${teamStats.dailyRecharge.toFixed(2)}</p>
+             <p className="text-[8px] text-slate-500 font-bold uppercase italic">Solo hoy</p>
+          </div>
+          <div className="glass p-5 rounded-[2.5rem] border border-blue-500/10 bg-slate-800/20 space-y-2">
+             <div className="flex items-center space-x-2 text-blue-400">
+                <Users size={16} />
+                <span className="text-[9px] font-black uppercase tracking-widest">Nuevos Miembros</span>
+             </div>
+             <p className="text-2xl font-black text-slate-100 font-display italic">{teamStats.dailyNew}</p>
+             <p className="text-[8px] text-slate-500 font-bold uppercase italic">Nuevos ingresos</p>
+          </div>
         </div>
       </div>
 
-      {/* Detailed Counts */}
-      <div className="glass rounded-xl overflow-hidden border border-white/5">
-        <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
-          <h4 className="font-bold text-slate-200">Estructura Global</h4>
-          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">{team.length}</span>
+      <div className="space-y-4">
+        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Métricas Globales</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="glass p-5 rounded-[2.5rem] border border-white/5 space-y-1">
+             <p className="text-[9px] font-black text-slate-500 uppercase">Volumen Red Total</p>
+             <p className="text-xl font-black text-amber-500 font-display">${teamStats.totalRecharge.toLocaleString()}</p>
+          </div>
+          <div className="glass p-5 rounded-[2.5rem] border border-white/5 space-y-1">
+             <p className="text-[9px] font-black text-slate-500 uppercase">Red Total Usuarios</p>
+             <p className="text-xl font-black text-slate-100 font-display">{teamStats.totalTeamUsers}</p>
+          </div>
         </div>
-        <div className="divide-y divide-white/5">
-          <div className="p-4 flex justify-between items-center">
-            <div className="space-y-1">
-              <p className="text-xs text-slate-400 uppercase font-bold">Jerarquía Nivel 1</p>
-              <p className="text-lg font-bold text-slate-100">{level1.length} <span className="text-xs font-normal text-slate-500 italic">Usuarios</span></p>
-            </div>
-          </div>
-          <div className="p-4 flex justify-between items-center">
-            <div className="space-y-1">
-              <p className="text-xs text-slate-400 uppercase font-bold">Jerarquía Nivel 2</p>
-              <p className="text-lg font-bold text-slate-100">{level2.length} <span className="text-xs font-normal text-slate-500 italic">Usuarios</span></p>
-            </div>
-          </div>
-          <div className="p-4 flex justify-between items-center">
-            <div className="space-y-1">
-              <p className="text-xs text-slate-400 uppercase font-bold">Jerarquía Nivel 3</p>
-              <p className="text-lg font-bold text-slate-100">{level3.length} <span className="text-xs font-normal text-slate-500 italic">Usuarios</span></p>
-            </div>
-          </div>
+      </div>
+
+      <div className="glass rounded-[2rem] p-6 border border-white/5 space-y-6">
+        <div className="flex items-center justify-between">
+           <h4 className="text-xs font-black text-slate-300 uppercase italic">Dividendos Lunes (Especiales)</h4>
+           <Activity size={16} className="text-amber-500 animate-pulse" />
+        </div>
+        <div className="space-y-4">
+           {[
+             { label: 'Nivel 1', count: level1.length, rebate: '7%', color: 'bg-blue-500' },
+             { label: 'Nivel 2', count: level2.length, rebate: '3%', color: 'bg-purple-500' },
+             { label: 'Nivel 3', count: level3.length, rebate: '2%', color: 'bg-pink-500' }
+           ].map((lvl, idx) => (
+             <div key={idx} className="flex items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                <div className="flex items-center space-x-3">
+                   <div className={`w-8 h-8 rounded-full ${lvl.color} flex items-center justify-center text-slate-900 font-black text-[10px]`}>{idx + 1}</div>
+                   <div>
+                      <p className="text-xs font-bold text-slate-200">{lvl.label}</p>
+                      <p className="text-[9px] text-slate-500 font-bold uppercase">{lvl.count} Miembros</p>
+                   </div>
+                </div>
+                <div className="text-right">
+                   <p className="text-sm font-black text-amber-500">{lvl.rebate}</p>
+                   <p className="text-[8px] text-slate-500 uppercase font-bold">Residual Lunes</p>
+                </div>
+             </div>
+           ))}
         </div>
         <button 
           onClick={() => setViewDetail(true)}
-          className="w-full py-4 text-amber-500 font-bold text-sm bg-amber-500/5 hover:bg-amber-500/10 transition-colors flex items-center justify-center space-x-1"
+          className="w-full py-4 gradient-gold rounded-2xl text-slate-900 font-bold text-xs uppercase tracking-widest shadow-xl shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center space-x-2"
         >
-          <span>Auditar Detalle del Equipo</span>
-          <ChevronRight size={16} />
+          <BarChart3 size={18} />
+          <span>Ver Miembros y Actividad</span>
         </button>
       </div>
     </div>

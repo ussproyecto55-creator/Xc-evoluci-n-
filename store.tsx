@@ -1,93 +1,272 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Transaction, TeamMember } from './types';
-import { VIP_LEVELS } from './constants';
+import { User, Transaction, TeamMember, ActiveBet } from './types';
+import { VIP_LEVELS, REFERRAL_COMMISSION, TEAM_REBATES, FIRST_RECHARGE_BONUS, SPORTS } from './constants';
+import { supabase } from './lib/supabase';
 
 interface AppContextType {
   user: User | null;
+  allUsers: User[];
+  allTransactions: Transaction[];
+  isLoading: boolean;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  transactions: Transaction[];
-  addTransaction: (tx: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
-  team: TeamMember[];
-  addTeamMember: (member: TeamMember) => void;
-  login: (username: string, referredBy?: string) => void;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'date' | 'status' | 'userId' | 'username'>) => Promise<void>;
+  login: (username: string, password?: string, isRegisterMode?: boolean, referredBy?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
-  recharge: (amount: number) => void;
-  withdraw: (amount: number) => boolean;
-  saveWithdrawalAddress: (address: string) => void;
-  applyCompoundInterest: (amount: number, percent: number) => void;
+  recharge: (amount: number, proofData?: string) => Promise<void>;
+  withdraw: (amount: number) => Promise<{ success: boolean; message: string }>;
+  saveWithdrawalAddress: (address: string) => Promise<void>;
+  applyCompoundInterest: (amount: number, percent: number, sportId: string) => Promise<void>;
+  processWeeklyCommissions: () => Promise<void>;
+  // Admin functions
+  adminUpdateTransaction: (id: string, status: 'completed' | 'rejected') => Promise<void>;
+  adminUpdateUser: (userId: string, data: Partial<User>) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = (username: string, referredBy?: string) => {
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      username,
-      balance: 0,
-      totalRecharge: 0,
-      vipLevel: 0,
-      referralCode: 'NEXUS-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
-      referredBy,
-      registrationDate: new Date().toISOString(),
-      monthlyWithdrawalCount: 0,
+  // Inicialización: Cargar datos desde Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('*');
+        
+        if (usersError) throw usersError;
+        setAllUsers(usersData || []);
+
+        const { data: txData, error: txError } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('date', { ascending: false });
+        
+        if (txError) throw txError;
+        setAllTransactions(txData || []);
+      } catch (err) {
+        console.error("Error al cargar datos de Supabase:", err);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    setUser(newUser);
+
+    fetchData();
+
+    // Suscripción en tiempo real
+    const usersSubscription = supabase
+      .channel('public:users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+        setAllUsers(prev => {
+          if (payload.eventType === 'INSERT') return [...prev, payload.new as User];
+          if (payload.eventType === 'UPDATE') return prev.map(u => u.id === payload.new.id ? { ...u, ...payload.new } : u);
+          if (payload.eventType === 'DELETE') return prev.filter(u => u.id !== payload.old.id);
+          return prev;
+        });
+      })
+      .subscribe();
+
+    const txSubscription = supabase
+      .channel('public:transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload) => {
+        setAllTransactions(prev => {
+          if (payload.eventType === 'INSERT') return [payload.new as Transaction, ...prev];
+          if (payload.eventType === 'UPDATE') return prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t);
+          return prev;
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(usersSubscription);
+      supabase.removeChannel(txSubscription);
+    };
+  }, []);
+
+  // Sincronizar usuario actual si cambia en la lista global
+  useEffect(() => {
+    if (user) {
+      const updatedUser = allUsers.find(u => u.id === user.id);
+      if (updatedUser) setUser(updatedUser);
+    }
+  }, [allUsers]);
+
+  const processWeeklyCommissions = async () => {
+    const updates = allUsers.filter(u => (u.pendingCommissions || 0) > 0).map(async (u) => {
+      const amount = u.pendingCommissions;
+      await addTransactionForUser(u.id, {
+        type: 'rebate',
+        amount,
+        description: "Entrega semanal de dividendos de red (Lunes 12:00 PM)"
+      });
+      await adminUpdateUser(u.id, { balance: u.balance + amount, pendingCommissions: 0 });
+    });
+    await Promise.all(updates);
+  };
+
+  const login = async (username: string, password?: string, isRegisterMode?: boolean, referredBy?: string): Promise<{ success: boolean; message: string }> => {
+    const usernameLower = username.toLowerCase().trim();
+    const existingUser = allUsers.find(u => u.username === usernameLower);
+
+    if (isRegisterMode) {
+      if (existingUser) return { success: false, message: "El nombre de usuario ya existe." };
+      
+      const newUser: User = {
+        id: crypto.randomUUID(),
+        username: usernameLower,
+        password,
+        balance: 0,
+        totalRecharge: 0,
+        pendingCommissions: 0,
+        vipLevel: 0,
+        referralCode: 'ELITE-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
+        referredBy,
+        registrationDate: new Date().toISOString(),
+        monthlyWithdrawalCount: 0,
+        role: usernameLower === 'admin' ? 'admin' : 'user',
+        isBlocked: false,
+        activeBet: null
+      };
+
+      const { error } = await supabase.from('users').insert([newUser]);
+      if (error) return { success: false, message: "Error al registrar en la base de datos." };
+      
+      setUser(newUser);
+      return { success: true, message: "Registro exitoso." };
+    } else {
+      if (!existingUser) return { success: false, message: "El usuario no existe. Regístrese primero." };
+      if (existingUser.password !== password) return { success: false, message: "Contraseña incorrecta." };
+      if (existingUser.isBlocked) return { success: false, message: "Cuenta bloqueada. Contacte a soporte." };
+      
+      setUser(existingUser);
+      return { success: true, message: "Bienvenido." };
+    }
   };
 
   const logout = () => setUser(null);
 
-  const saveWithdrawalAddress = (address: string) => {
-    setUser(prev => prev ? { ...prev, withdrawalAddress: address } : null);
-  };
-
-  const addTransaction = (tx: Omit<Transaction, 'id' | 'date' | 'status'>) => {
+  const addTransactionForUser = async (userId: string, tx: Omit<Transaction, 'id' | 'date' | 'status' | 'userId' | 'username'>) => {
+    const targetUser = allUsers.find(u => u.id === userId);
+    if (!targetUser) return;
+    
     const newTx: Transaction = {
       ...tx,
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
+      userId: targetUser.id,
+      username: targetUser.username,
       date: new Date().toISOString(),
-      status: 'pending', // Por defecto todas empiezan en pendiente
+      status: 'completed'
     };
     
-    // Auto-completar ganancias y bonos para la simulación
-    if (tx.type === 'earning' || tx.type === 'rebate' || tx.type === 'bonus') {
+    await supabase.from('transactions').insert([newTx]);
+  };
+
+  const addTransaction = async (tx: Omit<Transaction, 'id' | 'date' | 'status' | 'userId' | 'username'>) => {
+    if (!user) return;
+    const newTx: Transaction = {
+      ...tx,
+      id: crypto.randomUUID(),
+      userId: user.id,
+      username: user.username,
+      date: new Date().toISOString(),
+      status: 'pending'
+    };
+    
+    if (['earning', 'rebate', 'bonus', 'bet'].includes(tx.type)) {
       newTx.status = 'completed';
     }
 
-    setTransactions(prev => [newTx, ...prev]);
+    await supabase.from('transactions').insert([newTx]);
   };
 
-  const recharge = (amount: number) => {
-    if (!user) return;
-    
-    if (amount < 10) {
-      alert("La inversión mínima inicial es de 10 USDT.");
-      return;
+  const payTeamCommissions = async (userId: string, rechargeAmount: number) => {
+    const currentUser = allUsers.find(u => u.id === userId);
+    if (!currentUser || !currentUser.referredBy) return;
+
+    const upline1 = allUsers.find(u => u.referralCode === currentUser.referredBy);
+    if (upline1) {
+      const comm1 = rechargeAmount * REFERRAL_COMMISSION.LEVEL_1;
+      await adminUpdateUser(upline1.id, { balance: upline1.balance + comm1 });
+      await addTransactionForUser(upline1.id, {
+        type: 'rebate',
+        amount: comm1,
+        description: `Comisión de recarga (Nivel 1): ${currentUser.username}`
+      });
+
+      if (upline1.referredBy) {
+        const upline2 = allUsers.find(u => u.referralCode === upline1.referredBy);
+        if (upline2) {
+          const comm2 = rechargeAmount * REFERRAL_COMMISSION.LEVEL_2;
+          await adminUpdateUser(upline2.id, { balance: upline2.balance + comm2 });
+          await addTransactionForUser(upline2.id, {
+            type: 'rebate',
+            amount: comm2,
+            description: `Comisión de recarga (Nivel 2): ${currentUser.username}`
+          });
+
+          if (upline2.referredBy) {
+            const upline3 = allUsers.find(u => u.referralCode === upline2.referredBy);
+            if (upline3) {
+              const comm3 = rechargeAmount * REFERRAL_COMMISSION.LEVEL_3;
+              await adminUpdateUser(upline3.id, { balance: upline3.balance + comm3 });
+              await addTransactionForUser(upline3.id, {
+                type: 'rebate',
+                amount: comm3,
+                description: `Comisión de recarga (Nivel 3): ${currentUser.username}`
+              });
+            }
+          }
+        }
+      }
     }
+  };
 
-    const isWednesday = new Date().getDay() === 3;
-    const bonusMultiplier = isWednesday ? 0.06 : 0;
-    const isFirstRecharge = user.totalRecharge === 0;
-    const firstBonusMultiplier = isFirstRecharge ? 0.03 : 0;
-    const totalBonus = amount * (bonusMultiplier + firstBonusMultiplier);
-    
-    // El balance se actualiza pero la transacción queda pendiente hasta que un "admin" la apruebe (simulado)
-    // Para esta simulación, la aprobaremos a los 5 segundos
-    addTransaction({
-      type: 'recharge',
-      amount,
-      description: `Recarga USDT ${isWednesday ? '+6% Bono Miércoles' : ''} ${isFirstRecharge ? '+3% Bono Bienvenida' : ''}`
-    });
+  const accumulateMondayRebates = async (userId: string, earningAmount: number) => {
+    const currentUser = allUsers.find(u => u.id === userId);
+    if (!currentUser || !currentUser.referredBy) return;
 
-    setTimeout(() => {
-      setUser(prev => {
-        if (!prev) return null;
-        const newTotalRecharge = prev.totalRecharge + amount;
+    const upline1 = allUsers.find(u => u.referralCode === currentUser.referredBy);
+    if (upline1) {
+      const rebate1 = earningAmount * TEAM_REBATES.LEVEL_1;
+      await adminUpdateUser(upline1.id, { pendingCommissions: (upline1.pendingCommissions || 0) + rebate1 });
+
+      if (upline1.referredBy) {
+        const upline2 = allUsers.find(u => u.referralCode === upline1.referredBy);
+        if (upline2) {
+          const rebate2 = earningAmount * TEAM_REBATES.LEVEL_2;
+          await adminUpdateUser(upline2.id, { pendingCommissions: (upline2.pendingCommissions || 0) + rebate2 });
+
+          if (upline2.referredBy) {
+            const upline3 = allUsers.find(u => u.referralCode === upline2.referredBy);
+            if (upline3) {
+              const rebate3 = earningAmount * TEAM_REBATES.LEVEL_3;
+              await adminUpdateUser(upline3.id, { pendingCommissions: (upline3.pendingCommissions || 0) + rebate3 });
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const adminUpdateTransaction = async (id: string, status: 'completed' | 'rejected') => {
+    const tx = allTransactions.find(t => t.id === id);
+    if (!tx) return;
+
+    if (status === 'completed' && tx.type === 'recharge' && tx.status === 'pending') {
+      const targetUser = allUsers.find(u => u.id === tx.userId);
+      if (targetUser) {
+        const isFirstRecharge = targetUser.totalRecharge === 0;
+        let bonusAmount = isFirstRecharge ? tx.amount * FIRST_RECHARGE_BONUS : 0;
+
+        let newBalance = targetUser.balance + tx.amount + bonusAmount;
+        let newTotalRecharge = targetUser.totalRecharge + tx.amount;
+        
         let newVIP = 0;
         for (const v of [...VIP_LEVELS].reverse()) {
           if (newTotalRecharge >= v.minRecharge) {
@@ -95,96 +274,151 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             break;
           }
         }
-        return {
-          ...prev,
-          balance: prev.balance + amount + totalBonus,
+
+        let ascensionBonus = 0;
+        if (newVIP > targetUser.vipLevel) {
+          for (let i = targetUser.vipLevel + 1; i <= newVIP; i++) {
+            ascensionBonus += VIP_LEVELS[i].bonus;
+          }
+          if (ascensionBonus > 0) {
+            await addTransactionForUser(targetUser.id, {
+              type: 'bonus',
+              amount: ascensionBonus,
+              description: `Bono por ascensión VIP (${targetUser.vipLevel} -> ${newVIP})`
+            });
+          }
+        }
+
+        await adminUpdateUser(targetUser.id, { 
+          balance: newBalance + ascensionBonus, 
           totalRecharge: newTotalRecharge,
           vipLevel: newVIP
-        };
-      });
-      
-      setTransactions(prev => prev.map(t => t.type === 'recharge' && t.status === 'pending' ? {...t, status: 'completed'} : t));
-
-      if (totalBonus > 0) {
-        addTransaction({
-          type: 'bonus',
-          amount: totalBonus,
-          description: 'Bono de Recarga'
         });
+
+        if (bonusAmount > 0) {
+          await addTransactionForUser(targetUser.id, {
+            type: 'bonus',
+            amount: bonusAmount,
+            description: `Bono bienvenida (3% Primera Recarga)`
+          });
+        }
+        await payTeamCommissions(targetUser.id, tx.amount);
       }
-    }, 5000);
+    }
+    
+    if (status === 'rejected' && tx.type === 'withdraw' && tx.status === 'pending') {
+      const targetUser = allUsers.find(u => u.id === tx.userId);
+      if (targetUser) {
+        await adminUpdateUser(targetUser.id, { balance: targetUser.balance + tx.amount });
+      }
+    }
+
+    await supabase.from('transactions').update({ status }).eq('id', id);
   };
 
-  const withdraw = (amount: number): boolean => {
-    if (!user) return false;
+  const adminUpdateUser = async (userId: string, data: Partial<User>) => {
+    const { error } = await supabase.from('users').update(data).eq('id', userId);
+    if (error) console.error("Error al actualizar usuario:", error);
+  };
+
+  const recharge = async (amount: number, proofData?: string) => {
+    await addTransaction({
+      type: 'recharge',
+      amount,
+      description: `Solicitud de Recarga USDT`,
+      proofData
+    });
+  };
+
+  const withdraw = async (amount: number): Promise<{ success: boolean; message: string }> => {
+    if (!user) return { success: false, message: "Sesión no válida" };
+    
     const currentVIP = VIP_LEVELS[user.vipLevel];
-    
-    if (user.vipLevel === 0) {
-      alert("Debes ser al menos VIP 1 para retirar.");
-      return false;
-    }
-
-    if (amount < 10) {
-      alert("El monto mínimo de retiro es de 10 USDT.");
-      return false;
-    }
-
     if (user.monthlyWithdrawalCount >= currentVIP.withdrawalsPerMonth) {
-      alert(`Límite mensual alcanzado (${currentVIP.withdrawalsPerMonth}).`);
-      return false;
+      return { 
+        success: false, 
+        message: `Límite de ${currentVIP.withdrawalsPerMonth} retiros mensuales alcanzado.` 
+      };
     }
 
-    const regDate = new Date(user.registrationDate);
-    const now = new Date();
-    if ((now.getTime() - regDate.getTime()) / (1000 * 60 * 60) < 24) {
-      alert("Debes esperar 24 horas después del registro para retirar tu capital.");
-      return false;
-    }
+    if (user.balance < amount) return { success: false, message: "Saldo insuficiente." };
 
-    if (user.balance < amount) {
-      alert("Saldo insuficiente.");
-      return false;
-    }
+    const today = new Date().toDateString();
+    const lastWithdrawal = user.lastWithdrawalDate ? new Date(user.lastWithdrawalDate).toDateString() : null;
+    if (lastWithdrawal === today) return { success: false, message: "Solo 1 retiro cada 24 horas." };
 
-    setUser(prev => prev ? {
-      ...prev,
-      balance: prev.balance - amount,
-      monthlyWithdrawalCount: prev.monthlyWithdrawalCount + 1,
-    } : null);
+    await adminUpdateUser(user.id, { 
+      balance: user.balance - amount, 
+      monthlyWithdrawalCount: (user.monthlyWithdrawalCount || 0) + 1,
+      lastWithdrawalDate: new Date().toISOString()
+    });
 
-    addTransaction({
+    await addTransaction({
       type: 'withdraw',
-      amount: amount,
-      description: `Retiro solicitado (Comisión ${currentVIP.commission}%)`
+      amount,
+      description: `Retiro solicitado`,
+      walletAddress: user.withdrawalAddress
     });
 
-    return true;
+    return { success: true, message: "Retiro solicitado correctamente." };
   };
 
-  const applyCompoundInterest = (amount: number, percent: number) => {
+  const applyCompoundInterest = async (amount: number, percent: number, sportId: string) => {
     if (!user) return;
-    const profit = (amount * percent) / 100;
     
-    setUser(prev => prev ? {
-      ...prev,
-      balance: prev.balance + profit
-    } : null);
+    const profit = (amount * percent) / 100;
+    const startTime = new Date().toISOString();
+    const endTime = new Date(Date.now() + 10000).toISOString();
 
-    addTransaction({
-      type: 'earning',
-      amount: profit,
-      description: `Ganancia deportiva (${percent}%)`
+    const activeBet: ActiveBet = {
+      amount,
+      sportId,
+      startTime,
+      endTime,
+      potentialProfit: profit
+    };
+
+    await adminUpdateUser(user.id, { 
+      balance: user.balance - amount,
+      lastBetDate: startTime,
+      activeBet
     });
+
+    await addTransaction({
+      type: 'bet',
+      amount,
+      description: `Inversión Deportiva`
+    });
+
+    setTimeout(async () => {
+      const targetUser = allUsers.find(u => u.id === user.id);
+      if (targetUser) {
+        await adminUpdateUser(targetUser.id, { 
+          balance: targetUser.balance + amount + profit,
+          activeBet: null 
+        });
+
+        await addTransactionForUser(targetUser.id, {
+          type: 'earning',
+          amount: profit,
+          description: `Ganancia Deportiva (+40 minutos)`
+        });
+
+        await accumulateMondayRebates(targetUser.id, profit);
+      }
+    }, 10000); 
   };
 
-  const addTeamMember = (member: TeamMember) => {
-    setTeam(prev => [...prev, member]);
+  const saveWithdrawalAddress = async (address: string) => {
+    if (!user) return;
+    await adminUpdateUser(user.id, { withdrawalAddress: address });
   };
 
   return (
     <AppContext.Provider value={{ 
-      user, setUser, transactions, addTransaction, team, addTeamMember,
-      login, logout, recharge, withdraw, saveWithdrawalAddress, applyCompoundInterest
+      user, allUsers, allTransactions, isLoading, setUser, addTransaction,
+      login, logout, recharge, withdraw, saveWithdrawalAddress, applyCompoundInterest, processWeeklyCommissions,
+      adminUpdateTransaction, adminUpdateUser
     }}>
       {children}
     </AppContext.Provider>

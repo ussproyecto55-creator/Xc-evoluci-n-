@@ -6,29 +6,48 @@ export type VIPLevel = {
   withdrawalsPerMonth: number;
   commission: number;
   color: string;
+  bonus: number; // Bono por subir de nivel
 };
 
 export type Transaction = {
   id: string;
-  type: 'recharge' | 'withdraw' | 'earning' | 'bonus' | 'rebate';
+  userId: string;
+  username: string;
+  type: 'recharge' | 'withdraw' | 'earning' | 'bonus' | 'rebate' | 'bet';
   amount: number;
   status: 'pending' | 'completed' | 'rejected';
   date: string;
   description: string;
+  walletAddress?: string;
+  proofData?: string; // Base64 de la imagen del comprobante
+};
+
+export type ActiveBet = {
+  amount: number;
+  sportId: string;
+  startTime: string;
+  endTime: string;
+  potentialProfit: number;
 };
 
 export type User = {
   id: string;
   username: string;
+  password?: string;
   balance: number;
   totalRecharge: number;
+  pendingCommissions: number; // Comisiones de red acumuladas para el lunes
   vipLevel: number;
   referralCode: string;
   referredBy?: string;
   registrationDate: string;
   lastWithdrawalDate?: string;
+  lastBetDate?: string; // Fecha de la última apuesta realizada
+  activeBet?: ActiveBet | null; // Seguimiento de la apuesta en curso
   monthlyWithdrawalCount: number;
-  withdrawalAddress?: string; // Nueva propiedad
+  withdrawalAddress?: string;
+  role: 'user' | 'admin';
+  isBlocked: boolean;
 };
 
 export type Sport = {
@@ -37,6 +56,7 @@ export type Sport = {
   icon: string;
   baseReturn: number;
   color: string;
+  fakeVolume: string; // Volumen de liquidez simulado
 };
 
 export type TeamMember = {
@@ -45,4 +65,5 @@ export type TeamMember = {
   recharged: boolean;
   totalRecharge: number;
   registrationDate: string;
+  hasBetToday: boolean;
 };

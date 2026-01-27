@@ -10,6 +10,8 @@ import { Auth } from './pages/Auth';
 import { Recharge } from './pages/Recharge';
 import { Withdraw } from './pages/Withdraw';
 import { FinancialRecords } from './pages/FinancialRecords';
+import { AdminPanel } from './pages/Admin';
+import { VIPPage } from './pages/VIP';
 
 const MainApp: React.FC = () => {
   const { user } = useApp();
@@ -24,10 +26,12 @@ const MainApp: React.FC = () => {
       case 'home': return <Home onNavigate={setActiveTab} />;
       case 'bet': return <Bet />;
       case 'team': return <Team />;
+      case 'vip': return <VIPPage />;
       case 'profile': return <Profile />;
       case 'recharge': return <Recharge />;
       case 'withdraw': return <Withdraw />;
       case 'records': return <FinancialRecords />;
+      case 'admin': return <AdminPanel />;
       default: return <Home onNavigate={setActiveTab} />;
     }
   };
@@ -38,6 +42,7 @@ const MainApp: React.FC = () => {
       setActiveTab={setActiveTab} 
       username={user.username} 
       balance={user.balance}
+      isAdmin={user.role === 'admin'}
     >
       {renderPage()}
     </Layout>
