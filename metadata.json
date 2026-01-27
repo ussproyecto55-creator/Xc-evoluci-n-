@@ -1,0 +1,7 @@
+{
+  "name": "Nexus Profit - Compound Interest Platform",
+  "description": "A multi-level compound interest platform with simulated sports betting, VIP tiers, and referral bonuses.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

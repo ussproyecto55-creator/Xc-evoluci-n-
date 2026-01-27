@@ -1,0 +1,114 @@
+
+import React, { useState } from 'react';
+import { useApp } from '../store';
+import { ShieldCheck, Upload, AlertCircle, CheckCircle2, Copy } from 'lucide-react';
+
+export const Recharge: React.FC = () => {
+  const { recharge } = useApp();
+  const [amount, setAmount] = useState('10');
+  const [network, setNetwork] = useState<'TRC20' | 'BEP20'>('TRC20');
+  const [proof, setProof] = useState<File | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!amount || parseFloat(amount) < 10) return alert("La recarga mínima es de 10 USDT");
+    if (!proof) return alert("Por favor suba el comprobante de pago");
+
+    recharge(parseFloat(amount));
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 5000);
+  };
+
+  const address = network === 'BEP20' 
+    ? '0x99180023cf210243c10706ac0c1f3da1352cf1c0' 
+    : 'TJyFGWMW8nviChVTMBx4i4HZ9Te4pF3Hyf';
+
+  const copyAddress = () => {
+    navigator.clipboard.writeText(address);
+    alert("¡Dirección copiada correctamente!");
+  };
+
+  return (
+    <div className="px-4 py-6 space-y-6">
+      <h2 className="text-2xl font-bold text-slate-100 font-display italic">Depósitos Nexus</h2>
+      
+      <div className="glass rounded-xl p-6 border border-white/5 space-y-6">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">1. Escoger Protocolo</label>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setNetwork('TRC20')}
+              className={`flex-1 py-3 rounded-xl font-bold border transition-all ${network === 'TRC20' ? 'border-amber-500 text-amber-500 bg-amber-500/5 shadow-[0_0_10px_rgba(245,158,11,0.1)]' : 'border-white/5 text-slate-500'}`}
+            >
+              USDT (TRC20)
+            </button>
+            <button 
+              onClick={() => setNetwork('BEP20')}
+              className={`flex-1 py-3 rounded-xl font-bold border transition-all ${network === 'BEP20' ? 'border-amber-500 text-amber-500 bg-amber-500/5 shadow-[0_0_10px_rgba(245,158,11,0.1)]' : 'border-white/5 text-slate-500'}`}
+            >
+              USDT (BEP20)
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3 bg-slate-900/80 p-5 rounded-2xl border border-white/5 relative overflow-hidden">
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Dirección Oficial {network}</p>
+          <div className="flex items-center space-x-2">
+            <code className="bg-slate-800 px-3 py-3 rounded-xl text-amber-500 font-mono text-[10px] flex-1 break-all border border-white/5 leading-tight">
+              {address}
+            </code>
+            <button 
+              onClick={copyAddress}
+              className="p-3 bg-amber-500 text-slate-900 rounded-xl shadow-lg active:scale-90 transition-all flex-shrink-0"
+            >
+              <Copy size={18} />
+            </button>
+          </div>
+          <div className="flex items-center space-x-2 text-[10px] text-amber-500/80 font-bold uppercase italic">
+            <AlertCircle size={14} />
+            <span>Mínimo 10 USDT • Solo envíe USDT</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">2. Cantidad a Recargar</label>
+            <div className="relative">
+              <input 
+                type="number" 
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full bg-slate-800/50 border border-white/10 rounded-2xl px-5 py-4 text-2xl font-bold focus:ring-2 focus:ring-amber-500 outline-none text-slate-100"
+              />
+              <span className="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-slate-500">USDT</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">3. Adjuntar Captura</label>
+            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-amber-500/50 transition-all bg-slate-800/20 group">
+              {proof ? (
+                <div className="text-center">
+                  <CheckCircle2 className="text-green-500 mx-auto mb-2" size={40} />
+                  <span className="text-xs text-slate-400 font-medium">{proof.name}</span>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Upload className="text-slate-500 mx-auto mb-2 group-hover:text-amber-500" size={40} />
+                  <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">Subir Recibo</span>
+                </div>
+              )}
+              <input type="file" className="hidden" accept="image/*" onChange={(e) => setProof(e.target.files?.[0] || null)} />
+            </label>
+          </div>
+
+          <button className="w-full py-5 gradient-gold rounded-2xl text-slate-900 font-bold text-lg shadow-2xl shadow-amber-500/30 active:scale-95 transition-all flex items-center justify-center space-x-2">
+            <ShieldCheck size={24} />
+            <span>Enviar Notificación de Pago</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
