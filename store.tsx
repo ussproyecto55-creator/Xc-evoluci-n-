@@ -79,6 +79,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
+  // MOTOR DE LIQUIDACIÓN AUTOMÁTICA (Auto-Settlement)
+  useEffect(() => {
+    const settleInterval = setInterval(async () => {
+      if (!user || !user.activeBet) return;
+
+      const now = new Date();
+      const endTime = new Date(user.activeBet.endTime);
+
+      if (now >= endTime) {
+        const profit = user.activeBet.potentialProfit;
+        const investedAmount = user.activeBet.amount;
+        const totalReturn = investedAmount + profit;
+
+        // 1. Actualización local inmediata
+        const updatedUser = { 
+          ...user, 
+          balance: user.balance + totalReturn, 
+          activeBet: null 
+        };
+        setUser(updatedUser);
+
+        // 2. Persistencia en base de datos
+        try {
+          // Actualizar balance y limpiar apuesta activa
+          await adminUpdateUser(user.id, { 
+            balance: user.balance + totalReturn, 
+            activeBet: null 
+          });
+
+          // Registrar ganancia en el historial
+          await addTransactionForUser(user.id, { 
+            type: 'earning', 
+            amount: profit, 
+            description: `Rendimiento Arbitraje Finalizado (+${profit.toFixed(2)} USDT)` 
+          });
+
+          showNotification(`¡Ciclo Finalizado! +${totalReturn.toFixed(2)} USDT retornados al saldo.`, "success");
+        } catch (err) {
+          console.error("Error al liquidar apuesta:", err);
+        }
+      }
+    }, 10000); // Verificar cada 10 segundos
+
+    return () => clearInterval(settleInterval);
+  }, [user]);
+
   const fetchData = async () => {
     try {
       const { data: usersData } = await supabase.from('users').select('*');
@@ -111,7 +157,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!target) return;
     const newTx = { ...tx, id: crypto.randomUUID(), userId, username: target.username, date: new Date().toISOString(), status: 'completed' };
     await supabase.from('transactions').insert([newTx]);
-    // Actualización local inmediata para visibilidad del admin
     setAllTransactions(prev => [newTx as Transaction, ...prev]);
   };
 
@@ -137,7 +182,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tx = allTransactions.find(t => t.id === id);
     if (!tx) return;
 
-    // Actualización local optimista para el historial del admin
     setAllTransactions(prev => prev.map(t => t.id === id ? { ...t, status } : t));
 
     try {
@@ -238,9 +282,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const applyCompoundInterest = async (amount: number, percent: number, sportId: string) => {
     if (!user || user.activeBet) return;
     const profit = (amount * percent) / 100;
+    // Establecer tiempo final: 40 minutos (2,400,000 ms)
     const endTime = new Date(Date.now() + 2400000).toISOString();
     const activeBet: ActiveBet = { amount, sportId, startTime: new Date().toISOString(), endTime, potentialProfit: profit };
     
+    // Sincronización optimista inmediata
     setUser(prev => prev ? { ...prev, balance: prev.balance - amount, activeBet } : null);
     
     await adminUpdateUser(user.id, { balance: user.balance - amount, activeBet, lastBetDate: new Date().toISOString() });
