@@ -8,24 +8,27 @@ interface LayoutProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   username: string;
-  balance: number;
+  balance: number; // Prop mantenida por compatibilidad, pero usaremos context
   isAdmin?: boolean;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, username, balance, isAdmin }) => {
-  const { showNotification } = useApp();
+export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, username, isAdmin }) => {
+  const { user, showNotification } = useApp();
+
+  // Siempre usamos el balance del context para asegurar sincronización 1:1 con el estado global
+  const displayBalance = user ? user.balance : 0;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 pb-20">
-      {/* Header */}
+      {/* Header Sincronizado */}
       <header className="sticky top-0 z-50 glass px-4 py-3 flex justify-between items-center shadow-lg border-b border-white/5">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.5)]">E</div>
           <span className="font-bold text-lg tracking-tight text-white font-display italic">Elite Sports</span>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Balance Disponible</span>
-          <span className="text-amber-400 font-black text-lg tracking-tighter">${balance.toFixed(2)} USDT</span>
+        <div className="flex flex-col items-end animate-in fade-in duration-300">
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Saldo Disponible</span>
+          <span className="text-amber-400 font-black text-lg tracking-tighter">${displayBalance.toFixed(2)} USDT</span>
         </div>
       </header>
 
