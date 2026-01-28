@@ -12,33 +12,32 @@ export const VIP_LEVELS: VIPLevel[] = [
   { id: 7, name: 'VIP 7', minRecharge: 4500, withdrawalsPerMonth: 10, commission: 4, color: 'bg-yellow-500', bonus: 135 },
 ];
 
-export const SPORTS: Sport[] = [
-  { id: '1', name: 'Baseball', icon: '⚾', baseReturn: 0.025, color: 'from-blue-600 to-blue-800', fakeVolume: '1.42M' },
-  { id: '2', name: 'Football', icon: '🏈', baseReturn: 0.021, color: 'from-orange-600 to-orange-800', fakeVolume: '940K' },
-  { id: '3', name: 'Soccer', icon: '⚽', baseReturn: 0.023, color: 'from-green-600 to-green-800', fakeVolume: '2.15M' },
-  { id: '4', name: 'Tennis', icon: '🎾', baseReturn: 0.0185, color: 'from-yellow-500 to-yellow-700', fakeVolume: '620K' },
-  { id: '5', name: 'Golf', icon: '⛳', baseReturn: 0.016, color: 'from-emerald-500 to-emerald-700', fakeVolume: '315K' },
+export const SPORT_TEMPLATES = [
+  { id: '1', name: 'Baseball', icon: '⚾', color: 'from-blue-600 to-blue-800', baseReturn: 0.015, teams: ['NY Yankees', 'LA Dodgers', 'Boston Red Sox', 'Houston Astros', 'Chicago Cubs', 'Atlanta Braves'] },
+  { id: '2', name: 'Football', icon: '🏈', color: 'from-orange-600 to-orange-800', baseReturn: 0.012, teams: ['KC Chiefs', 'SF 49ers', 'Dallas Cowboys', 'Philly Eagles', 'Buffalo Bills', 'Miami Dolphins'] },
+  { id: '3', name: 'Soccer', icon: '⚽', color: 'from-green-600 to-green-800', baseReturn: 0.018, teams: ['Real Madrid', 'Man City', 'PSG', 'FC Barcelona', 'Bayern Munich', 'Liverpool FC'] },
+  { id: '4', name: 'Basketball', icon: '🏀', color: 'from-purple-600 to-purple-800', baseReturn: 0.014, teams: ['LA Lakers', 'GS Warriors', 'Boston Celtics', 'Miami Heat', 'Phoenix Suns', 'Milwaukee Bucks'] },
+  { id: '5', name: 'Tennis', icon: '🎾', color: 'from-yellow-500 to-yellow-700', baseReturn: 0.011, teams: ['Novak Djokovic', 'Carlos Alcaraz', 'Jannik Sinner', 'Daniil Medvedev', 'Rafa Nadal', 'Alexander Zverev'] },
 ];
 
 export const TEAM_REBATES = {
-  LEVEL_1: 0.07, // 7% de las ganancias del referido
-  LEVEL_2: 0.03, // 3%
-  LEVEL_3: 0.02, // 2%
+  LEVEL_1: 0.07,
+  LEVEL_2: 0.03,
+  LEVEL_3: 0.02,
 };
 
 export const REFERRAL_COMMISSION = {
-  LEVEL_1: 0.08, // 8% de la recarga
-  LEVEL_2: 0.03, // 3%
-  LEVEL_3: 0.01, // 1%
+  LEVEL_1: 0.08,
+  LEVEL_2: 0.03,
+  LEVEL_3: 0.01,
 };
 
-export const FIRST_RECHARGE_BONUS = 0.03; // 3% bono primera recarga
+export const FIRST_RECHARGE_BONUS = 0.03;
 
-// Horarios de Operación
 export const BUSINESS_HOURS = {
-  BET: { START: 11, END: 16 }, // 11 AM - 4 PM
-  RECHARGE: { START: 0, END: 24 }, // 24/7
-  WITHDRAW: { START: 0, END: 24 }  // 24/7
+  BET: { START: 11, END: 16 },
+  RECHARGE: { START: 0, END: 24 },
+  WITHDRAW: { START: 0, END: 24 }
 };
 
 export const ARRIVAL_TIMES = {

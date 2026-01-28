@@ -5,16 +5,17 @@ import {
   Users, Wallet, ArrowDownLeft, ArrowUpRight, ArrowRight,
   CheckCircle, XCircle, UserX, UserCheck, 
   Edit, Search, BarChart3, Database, ImageIcon, X, Clock, Calendar,
-  User as UserIcon
+  User as UserIcon, Zap, Activity, Filter, History
 } from 'lucide-react';
 import { User, Transaction } from '../types';
 
-type AdminTab = 'stats' | 'users' | 'recharges' | 'withdrawals' | 'all-tx';
+type AdminTab = 'stats' | 'users' | 'recharges' | 'withdrawals' | 'history';
 
 export const AdminPanel: React.FC = () => {
-  const { allUsers, allTransactions, adminUpdateTransaction, adminUpdateUser, processWeeklyCommissions, showNotification } = useApp();
+  const { allUsers, allTransactions, dailySports, adminUpdateTransaction, adminUpdateUser, processWeeklyCommissions, showNotification } = useApp();
   const [activeTab, setActiveTab] = useState<AdminTab>('stats');
   const [searchTerm, setSearchTerm] = useState('');
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'recharge' | 'withdraw'>('all');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewProofTx, setViewProofTx] = useState<Transaction | null>(null);
 
@@ -26,6 +27,18 @@ export const AdminPanel: React.FC = () => {
   const pendingWithdrawals = useMemo(() => 
     allTransactions.filter(t => t.type === 'withdraw' && t.status === 'pending'),
     [allTransactions]
+  );
+
+  const auditHistory = useMemo(() => {
+    return allTransactions.filter(t => {
+      if (historyFilter === 'all') return t.type === 'recharge' || t.type === 'withdraw';
+      return t.type === historyFilter;
+    });
+  }, [allTransactions, historyFilter]);
+
+  const prioritySport = useMemo(() => 
+    dailySports.find(s => s.baseReturn >= 0.024), 
+    [dailySports]
   );
 
   const filteredUsers = allUsers.filter(u => 
@@ -70,10 +83,10 @@ export const AdminPanel: React.FC = () => {
       <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
         {[
           { id: 'stats', label: 'Dashboard', icon: <BarChart3 size={14}/> },
-          { id: 'recharges', label: 'Recargas', icon: <ArrowDownLeft size={14}/>, count: pendingRecharges.length },
+          { id: 'recharges', label: 'Depósitos', icon: <ArrowDownLeft size={14}/>, count: pendingRecharges.length },
           { id: 'withdrawals', label: 'Retiros', icon: <ArrowUpRight size={14}/>, count: pendingWithdrawals.length },
+          { id: 'history', label: 'Auditoría', icon: <History size={14}/> },
           { id: 'users', label: 'Usuarios', icon: <Users size={14}/> },
-          { id: 'all-tx', label: 'Historial', icon: <Database size={14}/> },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -95,6 +108,25 @@ export const AdminPanel: React.FC = () => {
 
       {activeTab === 'stats' && (
         <div className="space-y-4">
+          <div className="glass p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-3">
+             <div className="flex items-center space-x-2 text-amber-500">
+                <Activity size={16} className="animate-pulse" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest">Mercado Hoy (Béisbol 2.5%)</h3>
+             </div>
+             {prioritySport && (
+               <div className="flex justify-between items-center">
+                  <div>
+                     <p className="text-xs font-bold text-white italic">{prioritySport.name}</p>
+                     <p className="text-[9px] text-slate-500 uppercase font-black">{prioritySport.icon} Deporte Fijo 2.5%</p>
+                  </div>
+                  <div className="text-right">
+                     <p className="text-lg font-black text-green-500">2.50%</p>
+                     <p className="text-[8px] text-slate-600 font-bold uppercase">ROI Asignado</p>
+                  </div>
+               </div>
+             )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="glass p-5 rounded-2xl border border-white/5 space-y-1">
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Inversión Total</p>
@@ -168,6 +200,13 @@ export const AdminPanel: React.FC = () => {
                 </button>
               )}
 
+              {tx.type === 'withdraw' && tx.walletAddress && (
+                <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                   <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mb-1">Billetera de Destino</p>
+                   <code className="text-[9px] text-amber-500 break-all font-mono">{tx.walletAddress}</code>
+                </div>
+              )}
+
               <div className="flex space-x-3 pt-2">
                 <button 
                   onClick={() => adminUpdateTransaction(tx.id, 'completed')}
@@ -186,6 +225,52 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="space-y-4">
+           <div className="flex justify-between items-center px-2">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Historial Maestro</h3>
+              <div className="flex space-x-2">
+                 {['all', 'recharge', 'withdraw'].map(f => (
+                   <button 
+                    key={f}
+                    onClick={() => setHistoryFilter(f as any)}
+                    className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${historyFilter === f ? 'bg-amber-500 border-amber-500 text-slate-900 shadow-md' : 'bg-slate-800 text-slate-400 border-white/5'}`}
+                   >
+                     {f === 'all' ? 'Todo' : f === 'recharge' ? 'Depósitos' : 'Retiros'}
+                   </button>
+                 ))}
+              </div>
+           </div>
+
+           <div className="space-y-3">
+             {auditHistory.length === 0 && (
+               <div className="glass p-10 rounded-2xl text-center text-slate-500 text-xs italic border border-white/5">
+                 No hay registros en el historial.
+               </div>
+             )}
+             {auditHistory.slice(0, 100).map(tx => (
+               <div key={tx.id} className="glass p-4 rounded-xl border border-white/5 flex justify-between items-center animate-in fade-in slide-in-from-right-2">
+                  <div className="flex items-center space-x-3">
+                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tx.type === 'recharge' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {tx.type === 'recharge' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black text-slate-100 uppercase italic leading-none">{tx.username}</p>
+                        <p className="text-[8px] text-slate-500 font-bold mt-1 uppercase">{new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                     </div>
+                  </div>
+                  <div className="text-right">
+                     <p className={`text-xs font-black italic ${tx.status === 'completed' ? 'text-green-500' : tx.status === 'rejected' ? 'text-red-500' : 'text-amber-500'}`}>
+                        {tx.status === 'completed' ? '+ ' : tx.status === 'rejected' ? 'X ' : ''}${tx.amount.toFixed(2)}
+                     </p>
+                     <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest">{tx.status}</p>
+                  </div>
+               </div>
+             ))}
+           </div>
         </div>
       )}
 
@@ -226,26 +311,6 @@ export const AdminPanel: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {activeTab === 'all-tx' && (
-        <div className="space-y-3">
-          {allTransactions.slice(0, 50).map(tx => (
-            <div key={tx.id} className="glass p-4 rounded-xl border border-white/5 flex justify-between items-center text-[9px] font-medium">
-              <div>
-                <p className="font-black text-slate-300 uppercase tracking-tighter">{tx.type} • {tx.username}</p>
-                <p className="text-slate-500 italic mt-0.5">{tx.description}</p>
-                <p className="text-slate-600 mt-1">{new Date(tx.date).toLocaleString()}</p>
-              </div>
-              <div className="text-right">
-                <p className={`font-black uppercase text-[8px] ${tx.status === 'completed' ? 'text-green-500' : tx.status === 'pending' ? 'text-amber-500' : 'text-red-500'}`}>
-                  {tx.status}
-                </p>
-                <p className="text-slate-100 font-black text-xs mt-1">${tx.amount.toFixed(2)}</p>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
