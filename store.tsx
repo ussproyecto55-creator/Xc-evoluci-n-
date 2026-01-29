@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { User, Transaction, TeamMember, ActiveBet, Sport } from './types';
+import { User, Transaction, TeamMember, ActiveBet, Sport, BetRecord } from './types';
 import { VIP_LEVELS, REFERRAL_COMMISSION, TEAM_REBATES, FIRST_RECHARGE_BONUS, SPORT_TEMPLATES } from './constants';
 import { supabase } from './lib/supabase';
 import { X } from 'lucide-react';
@@ -42,28 +42,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Lógica de Rotación Diaria - Béisbol (ID '1') siempre al 2.5% hoy
+  // Lógica de Rotación Diaria - Cambia a las 11:00 AM
   const dailySports = useMemo(() => {
-    const today = new Date();
-    const daySeed = today.getFullYear() * 1000 + today.getMonth() * 100 + today.getDate();
+    const now = new Date();
+    // Desplazamos la hora 11 horas atrás para que el "cambio de día" ocurra a las 11:00 AM
+    const effectiveDate = new Date(now.getTime() - (11 * 60 * 60 * 1000));
+    const daySeed = effectiveDate.getFullYear() * 10000 + (effectiveDate.getMonth() + 1) * 100 + effectiveDate.getDate();
+    
+    // El índice de prioridad rota entre 0 y 4 (longitud de SPORT_TEMPLATES)
+    const priorityIndex = daySeed % SPORT_TEMPLATES.length;
     
     return SPORT_TEMPLATES.map((tpl, idx) => {
+      // Usamos daySeed para que los equipos también varíen cada 24h a las 11 AM
       const teamSeed = daySeed + idx;
       const t1Idx = teamSeed % tpl.teams.length;
-      const t2Idx = (teamSeed + 3) % tpl.teams.length;
+      const t2Idx = (teamSeed + 7) % tpl.teams.length;
       const team1 = tpl.teams[t1Idx];
-      const team2 = tpl.teams[t2Idx === t1Idx ? (t2Idx + 1) : t2Idx] || tpl.teams[0];
-
-      // Béisbol (ID: '1') al 2.5%
-      const isPriority = tpl.id === '1';
+      const team2 = tpl.teams[t2Idx === t1Idx ? (t2Idx + 1) % tpl.teams.length : t2Idx] || tpl.teams[0];
+      
+      const isPriority = idx === priorityIndex;
 
       return {
         id: tpl.id,
         name: `${team1} vs ${team2}`,
         icon: tpl.icon,
-        baseReturn: isPriority ? 0.025 : tpl.baseReturn + ((daySeed % 5) / 1000),
+        // El deporte prioritario del día siempre da 2.5%, los otros varían ligeramente
+        baseReturn: isPriority ? 0.025 : tpl.baseReturn + ((daySeed % 4) / 1000),
         color: tpl.color,
-        fakeVolume: `${(100 + (daySeed % 900))}K`
+        fakeVolume: `${(150 + (daySeed % 850))}K`
       } as Sport;
     });
   }, []);
@@ -99,14 +105,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { supabase.removeChannel(usersSub); supabase.removeChannel(txSub); };
   }, []);
 
-  // Sincronización robusta del usuario activo
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!user?.activeBet) return;
+      
+      const now = new Date();
+      const endTime = new Date(user.activeBet.endTime);
+      
+      if (now >= endTime) {
+        const profit = user.activeBet.potentialProfit;
+        const totalToReturn = user.activeBet.amount + profit;
+        const newBalance = user.balance + totalToReturn;
+        
+        await addTransactionForUser(user.id, {
+          type: 'earning',
+          amount: profit,
+          description: `Rendimiento Arbitraje ${profit > 0 ? 'Exitoso' : ''}`
+        });
+
+        await adminUpdateUser(user.id, {
+          balance: newBalance,
+          activeBet: null
+        });
+
+        showNotification(`¡Ciclo completado! Ganancia de $${profit.toFixed(2)} acreditada.`, "success");
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       const current = allUsers.find(u => u.id === user.id);
       if (current) {
-        // Solo actualizamos si hay cambios reales para evitar bucles, 
-        // pero priorizamos la consistencia del balance
-        if (current.balance !== user.balance || current.activeBet !== user.activeBet) {
+        if (current.balance !== user.balance || JSON.stringify(current.activeBet) !== JSON.stringify(user.activeBet)) {
           setUser(current);
         }
       }
@@ -134,9 +166,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const adminUpdateTransaction = async (id: string, status: 'completed' | 'rejected') => {
     const tx = allTransactions.find(t => t.id === id);
     if (!tx) return;
-
     setAllTransactions(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-
     try {
       if (status === 'completed' && tx.type === 'recharge' && tx.status === 'pending') {
         const targetUser = allUsers.find(u => u.id === tx.userId);
@@ -144,28 +174,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const isFirstRecharge = targetUser.totalRecharge === 0;
           let bonusAmount = isFirstRecharge ? tx.amount * FIRST_RECHARGE_BONUS : 0;
           let newTotalRecharge = targetUser.totalRecharge + tx.amount;
-          
           let newVIP = 0;
           const sortedVIPs = [...VIP_LEVELS].sort((a, b) => a.minRecharge - b.minRecharge);
           for (const v of sortedVIPs) { if (newTotalRecharge >= v.minRecharge) { newVIP = v.id; } }
-          
           let ascensionBonus = 0;
           if (newVIP > targetUser.vipLevel) {
             for (let i = targetUser.vipLevel + 1; i <= newVIP; i++) ascensionBonus += VIP_LEVELS[i].bonus;
           }
-
           await adminUpdateUser(targetUser.id, { 
             balance: targetUser.balance + tx.amount + bonusAmount + ascensionBonus, 
             totalRecharge: newTotalRecharge, 
             vipLevel: newVIP 
           });
-
           if (bonusAmount > 0) await addTransactionForUser(targetUser.id, { type: 'bonus', amount: bonusAmount, description: 'Bono 3% Recarga' });
           if (ascensionBonus > 0) await addTransactionForUser(targetUser.id, { type: 'bonus', amount: ascensionBonus, description: 'Bono VIP' });
           await applyReferralCommissionsOnRecharge(targetUser, tx.amount);
         }
       }
-
       if (status === 'rejected' && tx.type === 'withdraw' && tx.status === 'pending') {
         const targetUser = allUsers.find(u => u.id === tx.userId);
         if (targetUser) {
@@ -175,7 +200,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
       }
-
       await supabase.from('transactions').update({ status }).eq('id', id);
       showNotification(`${status === 'completed' ? 'Aprobado' : 'Rechazado'} correctamente.`, "success");
     } catch (err) {
@@ -197,7 +221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       await supabase.from('users').insert([newUser]);
       fetchData(); setUser(newUser);
-      return { success: true, message: "Bienvenido a la red." };
+      return { success: true, message: "Bienvenido." };
     } else {
       const found = allUsers.find(u => u.username === usernameLower);
       if (!found || found.password !== password) return { success: false, message: "Credenciales erróneas." };
@@ -218,13 +242,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const withdraw = async (amount: number) => {
-    if (!user) return { success: false, message: "Error sesión." };
+    if (!user) return { success: false, message: "Error." };
     if (user.balance < amount) return { success: false, message: "Saldo insuficiente." };
-    
-    // Sincronización optimista inmediata
     const newBalance = user.balance - amount;
     setUser(prev => prev ? { ...prev, balance: newBalance } : null);
-    
     await adminUpdateUser(user.id, { balance: newBalance, monthlyWithdrawalCount: user.monthlyWithdrawalCount + 1 });
     const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'withdraw', amount, status: 'pending', date: new Date().toISOString(), description: 'Retiro Solicitado', walletAddress: user.withdrawalAddress };
     await supabase.from('transactions').insert([tx]);
@@ -235,15 +256,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const applyCompoundInterest = async (amount: number, percent: number, sportId: string) => {
     if (!user || user.activeBet) return;
     const profit = (amount * percent) / 100;
-    const endTime = new Date(Date.now() + 2400000).toISOString();
+    const endTime = new Date(Date.now() + 2400000).toISOString(); 
     const activeBet: ActiveBet = { amount, sportId, startTime: new Date().toISOString(), endTime, potentialProfit: profit };
-    
-    // ACTUALIZACIÓN OPTIMISTA: Restar saldo inmediatamente para el header y UI
     const newBalance = user.balance - amount;
     setUser(prev => prev ? { ...prev, balance: newBalance, activeBet } : null);
-    
     await adminUpdateUser(user.id, { balance: newBalance, activeBet, lastBetDate: new Date().toISOString() });
-    await addTransactionForUser(user.id, { type: 'bet', amount, description: `Inversión Deportiva (${percent}%)` });
+    
+    await addTransactionForUser(user.id, {
+      type: 'bet',
+      amount: amount,
+      description: `Inversión Arbitraje ${dailySports.find(s=>s.id === sportId)?.icon || ''}`
+    });
   };
 
   const processWeeklyCommissions = async () => {

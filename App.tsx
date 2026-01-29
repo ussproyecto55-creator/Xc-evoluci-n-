@@ -12,6 +12,7 @@ import { Withdraw } from './pages/Withdraw';
 import { FinancialRecords } from './pages/FinancialRecords';
 import { AdminPanel } from './pages/Admin';
 import { VIPPage } from './pages/VIP';
+import { PlaysPage } from './pages/Plays';
 
 const MainApp: React.FC = () => {
   const { user } = useApp();
@@ -25,6 +26,7 @@ const MainApp: React.FC = () => {
     switch (activeTab) {
       case 'home': return <Home onNavigate={setActiveTab} />;
       case 'bet': return <Bet />;
+      case 'plays': return <PlaysPage />;
       case 'team': return <Team />;
       case 'vip': return <VIPPage />;
       case 'profile': return <Profile />;

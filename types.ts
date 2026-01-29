@@ -30,6 +30,18 @@ export type ActiveBet = {
   potentialProfit: number;
 };
 
+export type BetRecord = {
+  id: string;
+  userId: string;
+  sportId: string;
+  sportName: string;
+  sportIcon: string;
+  amount: number;
+  profit: number;
+  date: string;
+  status: 'completed' | 'auditing';
+};
+
 export type User = {
   id: string;
   username: string;
