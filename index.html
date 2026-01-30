@@ -7,6 +7,10 @@
     <title>Elite Sports</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+      // Shim para evitar errores de 'process is not defined' en el navegador
+      window.process = { env: { API_KEY: "" } };
+    </script>
     <style>
       body {
         font-family: 'Inter', sans-serif;

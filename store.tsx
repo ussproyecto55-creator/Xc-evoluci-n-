@@ -83,12 +83,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchData = async () => {
     try {
-      const { data: usersData } = await supabase.from('users').select('*');
+      const { data: usersData, error: uError } = await supabase.from('users').select('*');
       if (usersData) setAllUsers(usersData);
-      const { data: txData } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+      
+      const { data: txData, error: tError } = await supabase.from('transactions').select('*').order('date', { ascending: false });
       if (txData) setAllTransactions(txData);
+
+      if (uError || tError) console.error("Supabase error:", uError || tError);
     } catch (err) {
-      console.error("Fetch error:", err);
+      console.error("Critical fetch error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +104,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { supabase.removeChannel(usersSub); supabase.removeChannel(txSub); };
   }, []);
 
-  // PROCESO DE RETORNO DE GANANCIAS (INTERVALO DE AUDITORÍA)
   useEffect(() => {
     const interval = setInterval(async () => {
       if (!user?.activeBet) return;
@@ -114,35 +116,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const totalToReturn = user.activeBet.amount + profit;
         const newBalance = user.balance + totalToReturn;
         
-        // 1. Actualizar inmediatamente en local para que la UI responda sin lag
+        // Sincronización inmediata de UI
         setUser(prev => prev ? { ...prev, balance: newBalance, activeBet: null } : null);
 
-        // 2. Registrar ganancia en transacciones
         await addTransactionForUser(user.id, {
           type: 'earning',
           amount: profit,
           description: `Arbitraje Exitoso [${user.activeBet.market}]`
         });
 
-        // 3. Persistir en base de datos
-        await supabase.from('users').update({
-          balance: newBalance,
-          activeBet: null
-        }).eq('id', user.id);
-
-        showNotification(`¡Ciclo de Inversión Finalizado! +$${totalToReturn.toFixed(2)} USDT acreditados.`, "success");
+        await supabase.from('users').update({ balance: newBalance, activeBet: null }).eq('id', user.id);
+        showNotification(`¡Ciclo Finalizado! +$${totalToReturn.toFixed(2)} USDT acreditados.`, "success");
       }
-    }, 5000); // Frecuencia de chequeo aumentada para mayor precisión
+    }, 5000);
     return () => clearInterval(interval);
   }, [user]);
 
-  // Sincronizar usuario si cambia en la lista global (ej: auditoría de administrador)
   useEffect(() => {
     if (user) {
       const current = allUsers.find(u => u.id === user.id);
       if (current) {
-        // Solo actualizar si hay cambios reales para evitar bucles infinitos
-        if (current.balance !== user.balance || current.vipLevel !== user.vipLevel || JSON.stringify(current.activeBet) !== JSON.stringify(user.activeBet)) {
+        if (current.balance !== user.balance || JSON.stringify(current.activeBet) !== JSON.stringify(user.activeBet)) {
           setUser(current);
         }
       }
@@ -158,24 +152,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const login = async (username: string, password?: string, isRegisterMode?: boolean, referredBy?: string) => {
     const usernameLower = username.toLowerCase().trim();
-    if (isRegisterMode) {
-      const existingUser = allUsers.find(u => u.username === usernameLower);
-      if (existingUser) return { success: false, message: "Usuario existente." };
-      const newUser: User = {
-        id: crypto.randomUUID(), username: usernameLower, password, balance: 0, totalRecharge: 0,
-        pendingCommissions: 0, vipLevel: 0, referralCode: 'ELITE-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
-        referredBy, registrationDate: new Date().toISOString(), monthlyWithdrawalCount: 0,
-        role: usernameLower === 'admin' ? 'admin' : 'user', isBlocked: false, activeBet: null
-      };
-      await supabase.from('users').insert([newUser]);
-      setUser(newUser);
-      return { success: true, message: "Cuenta Creada." };
-    } else {
-      const found = allUsers.find(u => u.username === usernameLower);
-      if (!found || found.password !== password) return { success: false, message: "Credenciales erróneas." };
-      if (found.isBlocked) return { success: false, message: "Cuenta bloqueada." };
-      setUser(found);
-      return { success: true, message: "Bienvenido." };
+    try {
+      if (isRegisterMode) {
+        const existingUser = allUsers.find(u => u.username === usernameLower);
+        if (existingUser) return { success: false, message: "Usuario existente." };
+        const newUser: User = {
+          id: crypto.randomUUID(), username: usernameLower, password, balance: 0, totalRecharge: 0,
+          pendingCommissions: 0, vipLevel: 0, referralCode: 'ELITE-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
+          referredBy, registrationDate: new Date().toISOString(), monthlyWithdrawalCount: 0,
+          role: usernameLower === 'admin' ? 'admin' : 'user', isBlocked: false, activeBet: null
+        };
+        await supabase.from('users').insert([newUser]);
+        setUser(newUser);
+        return { success: true, message: "Cuenta Creada." };
+      } else {
+        const found = allUsers.find(u => u.username === usernameLower);
+        if (!found || found.password !== password) return { success: false, message: "Credenciales erróneas." };
+        if (found.isBlocked) return { success: false, message: "Cuenta bloqueada." };
+        setUser(found);
+        return { success: true, message: "Bienvenido." };
+      }
+    } catch (e) {
+      return { success: false, message: "Error de conexión con el servidor." };
     }
   };
 
@@ -185,7 +183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!user) return;
     const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'recharge', amount, status: 'pending', date: new Date().toISOString(), description: 'Depósito Nexus', proofData };
     await supabase.from('transactions').insert([tx]);
-    showNotification("Notificación de pago enviada.", "success");
+    showNotification("Notificación enviada.", "success");
   };
 
   const withdraw = async (amount: number) => {
@@ -194,7 +192,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     const newBalance = user.balance - amount;
     
-    // ACTUALIZACIÓN INMEDIATA DEL ESTADO LOCAL (Header Sync)
+    // Sincronización inmediata total
     setUser(prev => prev ? { ...prev, balance: newBalance, monthlyWithdrawalCount: (prev.monthlyWithdrawalCount || 0) + 1 } : null);
     
     const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'withdraw', amount, status: 'pending', date: new Date().toISOString(), description: 'Solicitud de Retiro', walletAddress: user.withdrawalAddress };
@@ -202,28 +200,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await supabase.from('transactions').insert([tx]);
     await supabase.from('users').update({ balance: newBalance, monthlyWithdrawalCount: (user.monthlyWithdrawalCount || 0) + 1 }).eq('id', user.id);
     
-    return { success: true, message: "Retiro enviado a auditoría." };
+    return { success: true, message: "Retiro en auditoría." };
   };
 
   const applyCompoundInterest = async (amount: number, percent: number, sportId: string, market: string) => {
     if (!user || user.activeBet) return;
     
     const profit = (amount * percent) / 100;
-    const endTime = new Date(Date.now() + 2400000).toISOString(); // 40 MINUTOS
+    const endTime = new Date(Date.now() + 2400000).toISOString();
     const activeBet: ActiveBet = { amount, sportId, startTime: new Date().toISOString(), endTime, potentialProfit: profit, market };
     const newBalance = user.balance - amount;
     
-    // ACTUALIZACIÓN INMEDIATA DEL ESTADO LOCAL (Header Sync)
+    // Sincronización inmediata total (Header + Main)
     setUser(prev => prev ? { ...prev, balance: newBalance, activeBet } : null);
 
-    // Persistir en Supabase
     await supabase.from('users').update({ balance: newBalance, activeBet, lastBetDate: new Date().toISOString() }).eq('id', user.id);
-    
-    await addTransactionForUser(user.id, {
-      type: 'bet',
-      amount: amount,
-      description: `Arbitraje Inverso [${market}]`
-    });
+    await addTransactionForUser(user.id, { type: 'bet', amount, description: `Arbitraje Inverso [${market}]` });
   };
 
   const adminUpdateTransaction = async (id: string, status: 'completed' | 'rejected') => {
@@ -251,7 +243,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
       await supabase.from('transactions').update({ status }).eq('id', id);
-      showNotification("Operación procesada.", "success");
+      showNotification("Transacción actualizada.", "success");
     } catch (err) { console.error(err); }
   };
 
