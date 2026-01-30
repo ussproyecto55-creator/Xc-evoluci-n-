@@ -13,11 +13,51 @@ export const VIP_LEVELS: VIPLevel[] = [
 ];
 
 export const SPORT_TEMPLATES = [
-  { id: '1', name: 'Baseball', icon: '⚾', color: 'from-blue-600 to-blue-800', baseReturn: 0.015, teams: ['NY Yankees', 'LA Dodgers', 'Boston Red Sox', 'Houston Astros', 'Chicago Cubs', 'Atlanta Braves'] },
-  { id: '2', name: 'Football', icon: '🏈', color: 'from-orange-600 to-orange-800', baseReturn: 0.012, teams: ['KC Chiefs', 'SF 49ers', 'Dallas Cowboys', 'Philly Eagles', 'Buffalo Bills', 'Miami Dolphins'] },
-  { id: '3', name: 'Soccer', icon: '⚽', color: 'from-green-600 to-green-800', baseReturn: 0.018, teams: ['Real Madrid', 'Man City', 'PSG', 'FC Barcelona', 'Bayern Munich', 'Liverpool FC'] },
-  { id: '4', name: 'Basketball', icon: '🏀', color: 'from-purple-600 to-purple-800', baseReturn: 0.014, teams: ['LA Lakers', 'GS Warriors', 'Boston Celtics', 'Miami Heat', 'Phoenix Suns', 'Milwaukee Bucks'] },
-  { id: '5', name: 'Tennis', icon: '🎾', color: 'from-yellow-500 to-yellow-700', baseReturn: 0.011, teams: ['Novak Djokovic', 'Carlos Alcaraz', 'Jannik Sinner', 'Daniil Medvedev', 'Rafa Nadal', 'Alexander Zverev'] },
+  { 
+    id: '1', 
+    name: 'Champions League', 
+    icon: '⚽', 
+    color: 'from-blue-600 to-blue-900', 
+    baseReturn: 0.015, 
+    markets: ['Inverso 3-3', 'Inverso 4-4', 'Inverso 0-4'],
+    teams: ['Real Madrid', 'Manchester City', 'Bayern Munich', 'PSG', 'Liverpool', 'Inter Milan', 'Arsenal', 'Barcelona', 'Dortmund', 'Juventus'] 
+  },
+  { 
+    id: '2', 
+    name: 'MLB Baseball', 
+    icon: '⚾', 
+    color: 'from-blue-400 to-blue-700', 
+    baseReturn: 0.014, 
+    markets: ['Inverso 0-12', 'Inverso 15+ Runs', 'Inverso 1-11'],
+    teams: ['NY Yankees', 'LA Dodgers', 'Houston Astros', 'Atlanta Braves', 'Boston Red Sox', 'Chicago Cubs', 'Philadelphia Phillies', 'Texas Rangers'] 
+  },
+  { 
+    id: '3', 
+    name: 'NBA Basketball', 
+    icon: '🏀', 
+    color: 'from-orange-500 to-red-700', 
+    baseReturn: 0.018, 
+    markets: ['Inverso 135-135', 'Inverso 90-140', 'Inverso 120-120'],
+    teams: ['LA Lakers', 'GS Warriors', 'Boston Celtics', 'Miami Heat', 'Phoenix Suns', 'Milwaukee Bucks', 'Denver Nuggets', 'Dallas Mavericks'] 
+  },
+  { 
+    id: '4', 
+    name: 'NFL American', 
+    icon: '🏈', 
+    color: 'from-green-700 to-blue-900', 
+    baseReturn: 0.012, 
+    markets: ['Inverso 3-3', 'Inverso 50-50', 'Inverso 0-45'],
+    teams: ['KC Chiefs', 'SF 49ers', 'Dallas Cowboys', 'Philadelphia Eagles', 'Buffalo Bills', 'Cincinnati Bengals', 'Baltimore Ravens'] 
+  },
+  { 
+    id: '5', 
+    name: 'ATP Tennis', 
+    icon: '🎾', 
+    color: 'from-yellow-400 to-green-600', 
+    baseReturn: 0.011, 
+    markets: ['Inverso 0-3 Sets', 'Inverso 6-0 6-0', 'Inverso Retiro'],
+    teams: ['Novak Djokovic', 'Carlos Alcaraz', 'Jannik Sinner', 'Daniil Medvedev', 'Alexander Zverev', 'Holger Rune', 'Stefanos Tsitsipas'] 
+  },
 ];
 
 export const TEAM_REBATES = {
@@ -35,7 +75,7 @@ export const REFERRAL_COMMISSION = {
 export const FIRST_RECHARGE_BONUS = 0.03;
 
 export const BUSINESS_HOURS = {
-  BET: { START: 11, END: 16 },
+  BET: { START: 11, END: 19 }, // Horario: 11:00 AM a 7:00 PM
   RECHARGE: { START: 0, END: 24 },
   WITHDRAW: { START: 0, END: 24 }
 };

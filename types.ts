@@ -6,7 +6,7 @@ export type VIPLevel = {
   withdrawalsPerMonth: number;
   commission: number;
   color: string;
-  bonus: number; // Bono por subir de nivel
+  bonus: number;
 };
 
 export type Transaction = {
@@ -19,7 +19,7 @@ export type Transaction = {
   date: string;
   description: string;
   walletAddress?: string;
-  proofData?: string; // Base64 de la imagen del comprobante
+  proofData?: string;
 };
 
 export type ActiveBet = {
@@ -28,18 +28,7 @@ export type ActiveBet = {
   startTime: string;
   endTime: string;
   potentialProfit: number;
-};
-
-export type BetRecord = {
-  id: string;
-  userId: string;
-  sportId: string;
-  sportName: string;
-  sportIcon: string;
-  amount: number;
-  profit: number;
-  date: string;
-  status: 'completed' | 'auditing';
+  market?: string; // Nuevo: El marcador inverso apostado
 };
 
 export type User = {
@@ -48,14 +37,14 @@ export type User = {
   password?: string;
   balance: number;
   totalRecharge: number;
-  pendingCommissions: number; // Comisiones de red acumuladas para el lunes
+  pendingCommissions: number;
   vipLevel: number;
   referralCode: string;
   referredBy?: string;
   registrationDate: string;
   lastWithdrawalDate?: string;
-  lastBetDate?: string; // Fecha de la última apuesta realizada
-  activeBet?: ActiveBet | null; // Seguimiento de la apuesta en curso
+  lastBetDate?: string;
+  activeBet?: ActiveBet | null;
   monthlyWithdrawalCount: number;
   withdrawalAddress?: string;
   role: 'user' | 'admin';
@@ -68,7 +57,8 @@ export type Sport = {
   icon: string;
   baseReturn: number;
   color: string;
-  fakeVolume: string; // Volumen de liquidez simulado
+  fakeVolume: string;
+  market: string; // Nuevo: Marcador inverso sugerido
 };
 
 export type TeamMember = {
