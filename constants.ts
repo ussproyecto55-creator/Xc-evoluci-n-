@@ -73,6 +73,7 @@ export const REFERRAL_COMMISSION = {
 };
 
 export const FIRST_RECHARGE_BONUS = 0.03;
+export const SATURDAY_SUPER_RECHARGE_BONUS = 0.06;
 
 export const BUSINESS_HOURS = {
   BET: { START: 11, END: 19 }, // Horario: 11:00 AM a 7:00 PM

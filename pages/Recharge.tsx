@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../store';
-import { ShieldCheck, Upload, AlertCircle, CheckCircle2, Copy, FileText, Loader2, X, Clock } from 'lucide-react';
-import { ARRIVAL_TIMES } from '../constants';
+import { ShieldCheck, Upload, AlertCircle, CheckCircle2, Copy, FileText, Loader2, X, Clock, Zap, Star } from 'lucide-react';
+import { ARRIVAL_TIMES, SATURDAY_SUPER_RECHARGE_BONUS } from '../constants';
 
 export const Recharge: React.FC = () => {
   const { recharge, showNotification } = useApp();
@@ -11,6 +11,8 @@ export const Recharge: React.FC = () => {
   const [proof, setProof] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const isSaturday = useMemo(() => new Date().getDay() === 6, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +47,6 @@ export const Recharge: React.FC = () => {
       }
     };
     reader.onerror = () => {
-      console.error("Error al leer el archivo de imagen");
       showNotification("Error al leer la imagen.", "error");
       setIsSubmitting(false);
     };
@@ -58,7 +59,7 @@ export const Recharge: React.FC = () => {
 
   const copyAddress = () => {
     navigator.clipboard.writeText(address);
-    showNotification("¡Dirección de billetera copiada!", "success");
+    showNotification("¡Dirección copiada!", "success");
   };
 
   return (
@@ -67,9 +68,25 @@ export const Recharge: React.FC = () => {
         <h2 className="text-2xl font-bold text-slate-100 font-display italic">Depósitos Nexus</h2>
         <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-amber-500">
            <Clock size={12} />
-           <span>Recargas Abiertas 24/7 • Acreditación en {ARRIVAL_TIMES.RECHARGE}</span>
+           <span>Recargas 24/7 • Acreditación en {ARRIVAL_TIMES.RECHARGE}</span>
         </div>
       </div>
+
+      {isSaturday && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-1 rounded-3xl shadow-lg animate-in zoom-in duration-500">
+           <div className="bg-slate-900 px-6 py-4 rounded-[1.4rem] flex items-center justify-between">
+              <div className="space-y-0.5">
+                 <div className="flex items-center space-x-2 text-amber-500">
+                    <Star size={14} className="animate-spin-slow" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Súper Recarga Activa</span>
+                 </div>
+                 <p className="text-lg font-black text-white italic leading-none">BONO EXTRA +6%</p>
+                 <p className="text-[8px] text-slate-400 font-bold uppercase">Solo hoy sábado automáticamente</p>
+              </div>
+              <Zap size={32} className="text-amber-500 animate-pulse" />
+           </div>
+        </div>
+      )}
 
       {success && (
         <div className="fixed top-20 left-4 right-4 z-[100] glass border-2 border-green-500/50 bg-green-500/10 p-5 rounded-[2rem] flex items-center space-x-4 animate-in slide-in-from-top duration-500 shadow-2xl">
@@ -78,7 +95,7 @@ export const Recharge: React.FC = () => {
           </div>
           <div className="flex-1">
             <h4 className="font-black text-green-400 text-sm italic uppercase">Solicitud Enviada</h4>
-            <p className="text-[10px] text-slate-200">Tu depósito está siendo auditado. Se acreditará en {ARRIVAL_TIMES.RECHARGE}.</p>
+            <p className="text-[10px] text-slate-200">Auditando depósito. Tiempo estimado: {ARRIVAL_TIMES.RECHARGE}.</p>
           </div>
           <button onClick={() => setSuccess(false)} className="text-slate-400"><X size={20}/></button>
         </div>
@@ -133,6 +150,9 @@ export const Recharge: React.FC = () => {
               />
               <span className="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-slate-500">USDT</span>
             </div>
+            {isSaturday && (
+               <p className="text-[9px] text-green-400 font-bold italic text-right">+${(parseFloat(amount || '0') * SATURDAY_SUPER_RECHARGE_BONUS).toFixed(2)} USDT Bono Súper Recarga</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -143,12 +163,12 @@ export const Recharge: React.FC = () => {
                   <div className="bg-blue-500/20 p-3 rounded-full mx-auto mb-2 text-blue-400">
                     <FileText size={40} />
                   </div>
-                  <span className="text-xs text-blue-400 font-bold uppercase tracking-widest">Imagen Seleccionada</span>
+                  <span className="text-xs text-blue-400 font-bold uppercase tracking-widest">Captura Lista</span>
                 </div>
               ) : (
                 <div className="text-center">
                   <Upload className="text-slate-500 mx-auto mb-2 group-hover:text-amber-500 transition-colors" size={40} />
-                  <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">Subir Captura de Pago</span>
+                  <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">Subir Imagen de Pago</span>
                 </div>
               )}
               <input type="file" className="hidden" accept="image/*" onChange={(e) => setProof(e.target.files?.[0] || null)} />
@@ -169,7 +189,7 @@ export const Recharge: React.FC = () => {
             ) : (
               <ShieldCheck size={24} />
             )}
-            <span>{isSubmitting ? 'Procesando...' : 'Enviar Notificación de Pago'}</span>
+            <span>{isSubmitting ? 'Auditando...' : 'Notificar Pago'}</span>
           </button>
         </form>
       </div>
