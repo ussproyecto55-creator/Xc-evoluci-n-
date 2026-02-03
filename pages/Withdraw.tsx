@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../store';
-import { VIP_LEVELS, ARRIVAL_TIMES } from '../constants';
+import { VIP_LEVELS, ARRIVAL_TIMES, MIN_WITHDRAW_AMOUNT } from '../constants';
 import { ArrowUpFromLine, Save, Landmark, Loader2, Clock, ShieldCheck, DollarSign } from 'lucide-react';
 
 export const Withdraw: React.FC = () => {
@@ -51,8 +51,8 @@ export const Withdraw: React.FC = () => {
       showNotification(`Bloqueo Nexus: disponible en ${remainingHours} horas.`, "error");
       return;
     }
-    if (stats.amount < 10) {
-      showNotification("Retiro mínimo: 10 USDT", "error");
+    if (stats.amount < MIN_WITHDRAW_AMOUNT) {
+      showNotification(`Retiro mínimo: ${MIN_WITHDRAW_AMOUNT} USDT`, "error");
       return;
     }
     if (stats.amount > user.balance) {
@@ -128,7 +128,7 @@ export const Withdraw: React.FC = () => {
 
         <form onSubmit={handleWithdraw} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Monto a retirar</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Monto a retirar (Min: {MIN_WITHDRAW_AMOUNT})</label>
             <div className="relative">
               <input 
                 type="number" 
@@ -157,9 +157,9 @@ export const Withdraw: React.FC = () => {
 
           <button 
             type="submit"
-            disabled={isProcessing || isLockedBySecurity || stats.amount > user.balance || stats.amount < 10}
+            disabled={isProcessing || isLockedBySecurity || stats.amount > user.balance || stats.amount < MIN_WITHDRAW_AMOUNT}
             className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center space-x-2 ${
-              isProcessing || isLockedBySecurity || stats.amount > user.balance || stats.amount < 10
+              isProcessing || isLockedBySecurity || stats.amount > user.balance || stats.amount < MIN_WITHDRAW_AMOUNT
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed' 
               : 'gradient-gold text-slate-900 shadow-amber-500/20 active:scale-95'
             }`}

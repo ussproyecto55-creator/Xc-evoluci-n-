@@ -31,6 +31,7 @@ interface AppContextType {
   adminUpdateTransaction: (id: string, status: 'completed' | 'rejected') => Promise<void>;
   adminUpdateUser: (userId: string, data: Partial<User>) => Promise<void>;
   showNotification: (message: string | undefined | null, type?: NotificationType) => void;
+  getDRTime: () => Date;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -42,9 +43,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  // Función para obtener la hora exacta en República Dominicana (UTC-4)
+  const getDRTime = () => {
+    return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santo_Domingo" }));
+  };
+
   const dailySports = useMemo(() => {
-    const now = new Date();
-    const effectiveDate = new Date(now.getTime() - (11 * 60 * 60 * 1000));
+    const drTime = getDRTime();
+    // Ajuste de reset a las 11 AM RD: si es antes de las 11, usamos la semilla del día anterior
+    const effectiveDate = drTime.getHours() < 11 ? new Date(drTime.getTime() - 24 * 60 * 60 * 1000) : drTime;
+    
     const daySeed = effectiveDate.getFullYear() * 10000 + (effectiveDate.getMonth() + 1) * 100 + effectiveDate.getDate();
     const priorityIndex = daySeed % SPORT_TEMPLATES.length;
     
@@ -249,7 +257,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{ 
       user, allUsers, allTransactions, dailySports, isLoading, setUser, addTransaction,
       login, logout, recharge, withdraw, saveWithdrawalAddress, applyCompoundInterest, processWeeklyCommissions,
-      adminUpdateTransaction, adminUpdateUser, showNotification
+      adminUpdateTransaction, adminUpdateUser, showNotification, getDRTime
     }}>
       {children}
       <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">

@@ -6,20 +6,33 @@ import { Sport } from '../types';
 import { CheckCircle2, Clock, Timer, Activity, BarChart2, ShieldCheck, Zap, TrendingUp, DollarSign } from 'lucide-react';
 
 export const Bet: React.FC = () => {
-  const { user, applyCompoundInterest, dailySports, showNotification } = useApp();
+  const { user, applyCompoundInterest, dailySports, showNotification, getDRTime } = useApp();
   const [betting, setBetting] = useState(false);
   const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
   const [betAmount, setBetAmount] = useState<string>('10');
+  const [drCurrentTime, setDrCurrentTime] = useState(getDRTime());
+
+  // Actualizar reloj de RD cada minuto para validación exacta
+  useEffect(() => {
+    const timer = setInterval(() => setDrCurrentTime(getDRTime()), 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   const isMarketOpen = useMemo(() => {
-    const hours = new Date().getHours();
-    return hours >= BUSINESS_HOURS.BET.START && hours < BUSINESS_HOURS.BET.END;
-  }, []);
+    const hoursRD = drCurrentTime.getHours();
+    return hoursRD >= BUSINESS_HOURS.BET.START && hoursRD < BUSINESS_HOURS.BET.END;
+  }, [drCurrentTime]);
 
   const hasAlreadyBetToday = useMemo(() => {
     if (!user?.lastBetDate) return false;
-    return new Date(user.lastBetDate).toDateString() === new Date().toDateString();
-  }, [user?.lastBetDate]);
+    // Comparamos fechas basadas en el ciclo de RD
+    const lastBetDate = new Date(user.lastBetDate);
+    const lastBetRD = new Date(lastBetDate.toLocaleString("en-US", { timeZone: "America/Santo_Domingo" }));
+    const currentRD = drCurrentTime;
+    
+    // Si la última apuesta fue hoy (según el día calendario de RD), bloqueamos
+    return lastBetRD.toDateString() === currentRD.toDateString();
+  }, [user?.lastBetDate, drCurrentTime]);
 
   const previewProfit = useMemo(() => {
     if (!selectedSport) return 0;
@@ -32,7 +45,7 @@ export const Bet: React.FC = () => {
     if (!user || !selectedSport || betting) return;
     
     if (!isMarketOpen) {
-      showNotification("Mercado cerrado. Horario: 11:00 AM - 7:00 PM.", "error");
+      showNotification("Mercado cerrado. Apertura: 11:00 AM.", "error");
       return;
     }
 
@@ -65,7 +78,7 @@ export const Bet: React.FC = () => {
       <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-lg ${isMarketOpen ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
         <div className="flex items-center space-x-2 font-bold text-[10px] uppercase">
           {isMarketOpen ? <Timer size={18} className="animate-pulse" /> : <Clock size={18} />}
-          <span>{isMarketOpen ? 'Mercado Abierto' : 'Mercado Cerrado (11AM-7PM)'}</span>
+          <span>{isMarketOpen ? 'Mercado Abierto' : 'Mercado Cerrado (Desde 11:00 AM)'}</span>
         </div>
         <div className="text-right">
           <span className="text-[8px] text-slate-500 font-black uppercase tracking-widest block">Potencial ROI</span>

@@ -76,7 +76,7 @@ export const FIRST_RECHARGE_BONUS = 0.03;
 export const SATURDAY_SUPER_RECHARGE_BONUS = 0.06;
 
 export const BUSINESS_HOURS = {
-  BET: { START: 11, END: 19 }, // Horario: 11:00 AM a 7:00 PM
+  BET: { START: 11, END: 19 }, // Horario basado en RD (11 AM a 7 PM)
   RECHARGE: { START: 0, END: 24 },
   WITHDRAW: { START: 0, END: 24 }
 };
@@ -85,3 +85,5 @@ export const ARRIVAL_TIMES = {
   RECHARGE: "máximo 1 hora",
   WITHDRAW: "máximo 24 horas"
 };
+
+export const MIN_WITHDRAW_AMOUNT = 3;
