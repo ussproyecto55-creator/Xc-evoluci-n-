@@ -44,17 +44,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const getDRTime = () => {
-    // Forzamos la obtención del tiempo en la zona de República Dominicana
+    // Calculamos UTC-4 (República Dominicana) de forma manual para evitar discrepancias de servidor
     const now = new Date();
-    const drOffset = -4; // UTC-4 para RD
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (3600000 * drOffset));
+    return new Date(utc - (3600000 * 4));
   };
 
   const dailySports = useMemo(() => {
     const drTime = getDRTime();
-    // Si es antes de las 11:00 AM en RD, usamos la semilla del día anterior
     const resetHour = 11;
+    // Si la hora actual en RD es menor a 11 AM, el "día de negocio" sigue siendo el anterior
     const effectiveDate = drTime.getHours() < resetHour 
       ? new Date(drTime.getTime() - (24 * 60 * 60 * 1000)) 
       : drTime;
@@ -62,7 +61,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const daySeed = effectiveDate.getFullYear() * 10000 + (effectiveDate.getMonth() + 1) * 100 + effectiveDate.getDate();
     
     return SPORT_TEMPLATES.map((tpl, idx) => {
-      const isPriority = tpl.id === '2'; // MLB Baseball como prioridad de arbitraje
+      const isPriority = tpl.id === '2'; // MLB Baseball 2.5%
       const mIdx = (daySeed + idx) % (tpl.markets?.length || 1);
       const market = tpl.markets ? tpl.markets[mIdx] : 'Inverso 3-3';
 
@@ -70,16 +69,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: tpl.id,
         name: tpl.name, 
         icon: tpl.icon,
-        baseReturn: isPriority ? 0.025 : Math.max(0.011, Math.min(0.018, tpl.baseReturn + ((daySeed % 5) / 1000))),
+        baseReturn: isPriority ? 0.025 : Math.max(0.011, Math.min(0.018, tpl.baseReturn + ((daySeed % 7) / 1000))),
         color: tpl.color,
-        fakeVolume: `${(450 + (daySeed % 400))}K`,
+        fakeVolume: `${(500 + (daySeed % 300))}K`,
         market: market
       } as Sport;
     });
   }, []);
 
   const showNotification = (message: string | undefined | null, type: NotificationType = 'info') => {
-    const safeMessage = message && message.trim() !== '' ? message : 'Operación exitosa.';
+    const safeMessage = message && message.trim() !== '' ? message : 'Confirmado';
     const id = crypto.randomUUID();
     setNotifications(prev => [...prev, { id, message: safeMessage, type }]);
     setTimeout(() => removeNotification(id), 4000);
@@ -129,12 +128,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           amount: profit, 
           date: new Date().toISOString(), 
           status: 'completed',
-          description: `Arbitraje Finalizado: ${user.activeBet.market}`
+          description: `ROI Liberado: ${user.activeBet.market}`
         };
         
         await supabase.from('transactions').insert([newTx]);
         await supabase.from('users').update({ balance: newBalance, activeBet: null }).eq('id', user.id);
-        showNotification(`+$${totalToReturn.toFixed(2)} USDT Retornados a Balance.`, "success");
+        showNotification(`Ciclo completado: +$${totalToReturn.toFixed(2)} USDT`, "success");
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -144,22 +143,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const usernameLower = username.toLowerCase().trim();
     if (isRegisterMode) {
       const existingUser = allUsers.find(u => u.username === usernameLower);
-      if (existingUser) return { success: false, message: "Usuario existente." };
+      if (existingUser) return { success: false, message: "ID ya registrado." };
       const newUser: User = {
         id: crypto.randomUUID(), username: usernameLower, password, balance: 0, totalRecharge: 0,
-        pendingCommissions: 0, vipLevel: 0, referralCode: 'ELITE-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
+        pendingCommissions: 0, vipLevel: 0, referralCode: 'NX-' + Math.random().toString(36).substr(2, 4).toUpperCase(),
         referredBy, registrationDate: new Date().toISOString(), monthlyWithdrawalCount: 0,
         role: usernameLower === 'admin' ? 'admin' : 'user', isBlocked: false, activeBet: null
       };
       await supabase.from('users').insert([newUser]);
       setUser(newUser);
-      return { success: true, message: "Registro exitoso." };
+      return { success: true, message: "Infraestructura lista." };
     } else {
       const found = allUsers.find(u => u.username === usernameLower);
-      if (!found || found.password !== password) return { success: false, message: "Credenciales incorrectas." };
-      if (found.isBlocked) return { success: false, message: "Cuenta bloqueada por seguridad." };
+      if (!found || found.password !== password) return { success: false, message: "Error de acceso." };
+      if (found.isBlocked) return { success: false, message: "Cuenta suspendida." };
       setUser(found);
-      return { success: true, message: "Acceso autorizado." };
+      return { success: true, message: "Acceso concedido." };
     }
   };
 
@@ -167,9 +166,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const recharge = async (amount: number, proofData?: string) => {
     if (!user) return;
-    const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'recharge', amount, status: 'pending', date: new Date().toISOString(), description: 'Depósito USDT', proofData };
+    const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'recharge', amount, status: 'pending', date: new Date().toISOString(), description: 'Carga de Liquidez', proofData };
     await supabase.from('transactions').insert([tx]);
-    showNotification("Solicitud de depósito en revisión.", "success");
+    showNotification("Transacción en auditoría.", "success");
   };
 
   const withdraw = async (amount: number) => {
@@ -177,24 +176,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (user.balance < amount) return { success: false, message: "Saldo insuficiente." };
     const newBalance = user.balance - amount;
     setUser(prev => prev ? { ...prev, balance: newBalance, monthlyWithdrawalCount: (prev.monthlyWithdrawalCount || 0) + 1 } : null);
-    const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'withdraw', amount, status: 'pending', date: new Date().toISOString(), description: 'Retiro Nexus', walletAddress: user.withdrawalAddress };
+    const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'withdraw', amount, status: 'pending', date: new Date().toISOString(), description: 'Extracción Nexus', walletAddress: user.withdrawalAddress };
     await supabase.from('transactions').insert([tx]);
     await supabase.from('users').update({ balance: newBalance, monthlyWithdrawalCount: (user.monthlyWithdrawalCount || 0) + 1 }).eq('id', user.id);
-    return { success: true, message: "Solicitud enviada a auditoría." };
+    return { success: true, message: "Solicitud enviada." };
   };
 
   const applyCompoundInterest = async (amount: number, percent: number, sportId: string, market: string) => {
     if (!user || user.activeBet) return;
     const profit = (amount * percent) / 100;
-    const endTime = new Date(Date.now() + 2400000).toISOString(); // 40 minutos
+    const endTime = new Date(Date.now() + 2400000).toISOString();
     const activeBet: ActiveBet = { amount, sportId, startTime: new Date().toISOString(), endTime, potentialProfit: profit, market };
     const newBalance = user.balance - amount;
     
-    const betTx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'bet', amount, status: 'completed', date: new Date().toISOString(), description: `Inversión Inversa: ${market}` };
-    
     setUser(prev => prev ? { ...prev, balance: newBalance, activeBet } : null);
     await supabase.from('users').update({ balance: newBalance, activeBet, lastBetDate: new Date().toISOString() }).eq('id', user.id);
-    await supabase.from('transactions').insert([betTx]);
+    await supabase.from('transactions').insert([{ id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'bet', amount, status: 'completed', date: new Date().toISOString(), description: `Ciclo: ${market}` }]);
   };
 
   const adminUpdateTransaction = async (id: string, status: 'completed' | 'rejected') => {
@@ -205,12 +202,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const targetUser = allUsers.find(u => u.id === tx.userId);
         if (targetUser) {
           const isFirstRecharge = targetUser.totalRecharge === 0;
-          const txDate = new Date(tx.date);
-          const isSaturday = txDate.getDay() === 6;
-          
           let bonusAmount = isFirstRecharge ? tx.amount * FIRST_RECHARGE_BONUS : 0;
-          let saturdayBonus = isSaturday ? tx.amount * SATURDAY_SUPER_RECHARGE_BONUS : 0;
-          
           let newTotalRecharge = targetUser.totalRecharge + tx.amount;
           let newVIP = 0;
           const sortedVIPs = [...VIP_LEVELS].sort((a, b) => a.minRecharge - b.minRecharge);
@@ -221,22 +213,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             for (let i = targetUser.vipLevel + 1; i <= newVIP; i++) ascensionBonus += VIP_LEVELS[i].bonus;
           }
           
-          const finalAddedBalance = tx.amount + bonusAmount + ascensionBonus + saturdayBonus;
           await adminUpdateUser(targetUser.id, { 
-            balance: targetUser.balance + finalAddedBalance, 
+            balance: targetUser.balance + tx.amount + bonusAmount + ascensionBonus, 
             totalRecharge: newTotalRecharge, 
             vipLevel: newVIP 
           });
-
-          if (saturdayBonus > 0) {
-            await supabase.from('transactions').insert([{
-              id: crypto.randomUUID(), userId: targetUser.id, username: targetUser.username, type: 'bonus', amount: saturdayBonus, status: 'completed', date: new Date().toISOString(), description: 'Bono Súper Recarga Sábado'
-            }]);
-          }
         }
       }
       await supabase.from('transactions').update({ status }).eq('id', id);
-      showNotification("Transacción procesada.", "success");
     } catch (err) { console.error(err); }
   };
 
