@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../store';
 import { 
   Clock, Activity, History, CheckCircle2, Timer, 
-  ShieldCheck, Zap, Calendar, Award, Target, Landmark, ArrowRight
+  ShieldCheck, Zap, Calendar, Award, Target, Landmark, ArrowRight, Fingerprint
 } from 'lucide-react';
 
 export const PlaysPage: React.FC = () => {
@@ -42,7 +42,7 @@ export const PlaysPage: React.FC = () => {
   return (
     <div className="px-4 py-6 space-y-6 pb-24 animate-in fade-in duration-500">
       <div className="flex flex-col space-y-1">
-        <h2 className="text-2xl font-bold text-slate-100 font-display italic tracking-tight uppercase">Auditoría Nexus</h2>
+        <h2 className="text-2xl font-black text-slate-100 font-display italic tracking-tight uppercase">Auditoría Nexus</h2>
         <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">Validación de Transacciones en Red</p>
       </div>
 
@@ -50,7 +50,7 @@ export const PlaysPage: React.FC = () => {
         <div className="flex justify-between items-center px-2">
            <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] flex items-center space-x-2">
               <Activity size={14} className="text-amber-500 animate-pulse" />
-              <span>Inversión en Curso</span>
+              <span>Ciclo de Arbitraje Activo</span>
            </h3>
         </div>
         
@@ -61,9 +61,12 @@ export const PlaysPage: React.FC = () => {
               <div className="bg-amber-500 px-6 py-3 flex justify-between items-center">
                  <div className="flex items-center space-x-2">
                     <ShieldCheck size={16} className="text-slate-900" />
-                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Contrato Activo</span>
+                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Contrato Auditado</span>
                  </div>
-                 <span className="text-[10px] font-black text-slate-900 font-mono">ID: {user.activeBet.sportId}</span>
+                 <div className="flex items-center space-x-1.5">
+                    <Fingerprint size={12} className="text-slate-900/50" />
+                    <span className="text-[10px] font-black text-slate-900 font-mono">ID-{user.activeBet.sportId}</span>
+                 </div>
               </div>
 
               <div className="p-6 space-y-6">
@@ -73,24 +76,24 @@ export const PlaysPage: React.FC = () => {
                         {activePlayInfo.sport?.icon || '🎮'}
                       </div>
                       <div>
-                         <h4 className="text-sm font-black text-white italic uppercase tracking-tighter leading-tight">{activePlayInfo.sport?.name || 'Arbitraje'}</h4>
-                         <p className="text-[9px] text-amber-400 font-black uppercase tracking-widest mt-1">Contra: {user.activeBet.market}</p>
+                         <h4 className="text-sm font-black text-white italic uppercase tracking-tighter leading-tight">{activePlayInfo.sport?.name || 'Arbitraje de Liquidez'}</h4>
+                         <p className="text-[9px] text-amber-400 font-black uppercase tracking-widest mt-1">Marcador: {user.activeBet.market}</p>
                       </div>
                    </div>
                    <div className="text-right">
                       <p className="text-xl font-black text-amber-500 font-display italic tracking-tighter">{activePlayInfo.timeLeft}</p>
-                      <p className="text-[8px] text-slate-500 font-black uppercase">Liberación</p>
+                      <p className="text-[8px] text-slate-500 font-black uppercase">Seg. Restantes</p>
                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-1 text-center">
-                      <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">Invertido</p>
-                      <p className="text-base font-black text-slate-100">${user.activeBet.amount.toFixed(2)} USDT</p>
+                      <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">Principal</p>
+                      <p className="text-base font-black text-slate-100">${user.activeBet.amount.toFixed(2)}</p>
                    </div>
                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-1 text-center">
                       <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">ROI Neto</p>
-                      <p className="text-base font-black text-green-400">+${user.activeBet.potentialProfit.toFixed(2)} USDT</p>
+                      <p className="text-base font-black text-green-400">+${user.activeBet.potentialProfit.toFixed(2)}</p>
                    </div>
                 </div>
 
@@ -99,16 +102,20 @@ export const PlaysPage: React.FC = () => {
                       <div className="h-full bg-gradient-to-r from-amber-500 to-green-500 rounded-full transition-all" style={{ width: `${activePlayInfo.progress}%` }} />
                    </div>
                    <div className="flex justify-between items-center px-1">
-                      <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">{activePlayInfo.progress.toFixed(0)}% Procesado</span>
+                      <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">{activePlayInfo.progress.toFixed(0)}% Sincronizado</span>
+                      <span className="text-[8px] font-black text-slate-600 uppercase">Protocolo Nexus V4</span>
                    </div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="glass rounded-[2rem] p-10 flex flex-col items-center justify-center text-center space-y-4 border border-white/5 border-dashed opacity-60">
+          <div className="glass rounded-[2rem] p-12 flex flex-col items-center justify-center text-center space-y-4 border border-white/5 border-dashed opacity-50">
              <Activity size={32} className="text-slate-600" />
-             <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest italic">Sin ciclos activos</p>
+             <div className="space-y-1">
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] italic">Sin ciclos activos de inversión</p>
+                <p className="text-[8px] text-slate-700 font-bold uppercase">Inicia una operación en la pestaña 'Invertir'</p>
+             </div>
           </div>
         )}
       </section>
@@ -117,33 +124,34 @@ export const PlaysPage: React.FC = () => {
         <div className="flex justify-between items-center px-2">
            <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] flex items-center space-x-2">
               <History size={14} className="text-blue-500" />
-              <span>Historial Maestro</span>
+              <span>Historial de Operaciones</span>
            </h3>
         </div>
 
         <div className="space-y-3">
           {betHistory.length === 0 ? (
-            <div className="text-center py-10 text-slate-600 text-[9px] font-black uppercase italic">No hay historial disponible</div>
+            <div className="text-center py-10 text-slate-700 text-[9px] font-black uppercase italic tracking-widest">Archivo de transacciones vacío</div>
           ) : (
-            betHistory.slice(0, 15).map((bet) => (
-              <div key={bet.id} className="glass rounded-2xl border border-white/5 p-4 relative overflow-hidden group">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500 opacity-50"></div>
+            betHistory.slice(0, 20).map((bet) => (
+              <div key={bet.id} className="glass rounded-2xl border border-white/5 p-4 relative overflow-hidden group hover:bg-white/5 transition-all">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500/40"></div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-500 border border-white/5">
-                      <Award size={20} />
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-500 border border-white/5 shadow-inner">
+                      <Award size={18} />
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-slate-100 uppercase italic leading-none">{bet.description}</p>
-                      <div className="mt-1 flex items-center space-x-2 text-[8px] text-slate-500 font-bold uppercase">
+                      <div className="mt-1.5 flex items-center space-x-2 text-[8px] text-slate-500 font-bold uppercase">
                         <Calendar size={10} /> <span>{new Date(bet.date).toLocaleDateString()}</span>
-                        <CheckCircle2 size={10} className="text-green-500" /> <span className="text-green-500">COMPLETADO</span>
+                        <div className="h-2 w-px bg-white/10 mx-1"></div>
+                        <CheckCircle2 size={10} className="text-green-500" /> <span className="text-green-500">LIQUIDADO</span>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-black text-slate-100 tracking-tighter">${bet.amount.toFixed(2)}</p>
-                    <p className="text-[7px] text-slate-600 font-bold uppercase">USDT</p>
+                    <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest">USDT ASIGNADO</p>
                   </div>
                 </div>
               </div>

