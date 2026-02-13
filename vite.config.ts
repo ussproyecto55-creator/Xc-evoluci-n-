@@ -10,11 +10,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      // Aseguramos que no haya externalizaciones accidentales
       external: []
     }
-  },
-  optimizeDeps: {
-    include: ['@supabase/supabase-js']
   }
 });

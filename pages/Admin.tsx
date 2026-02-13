@@ -5,11 +5,12 @@ import {
   Users, Wallet, ArrowDownLeft, ArrowUpRight, ArrowRight,
   CheckCircle, XCircle, UserX, UserCheck, 
   Edit, Search, BarChart3, Database, ImageIcon, X, Clock, Calendar,
-  User as UserIcon, Zap, Activity, Filter, History
+  User as UserIcon, Zap, Activity, Filter, History, Crown
 } from 'lucide-react';
 import { User, Transaction } from '../types';
+import { VIP_LEVELS } from '../constants';
 
-type AdminTab = 'stats' | 'users' | 'recharges' | 'withdrawals' | 'history';
+type AdminTab = 'stats' | 'users' | 'recharges' | 'withdrawals' | 'history' | 'vips';
 
 export const AdminPanel: React.FC = () => {
   const { allUsers, allTransactions, dailySports, adminUpdateTransaction, adminUpdateUser, processWeeklyCommissions, showNotification } = useApp();
@@ -85,8 +86,9 @@ export const AdminPanel: React.FC = () => {
           { id: 'stats', label: 'Dashboard', icon: <BarChart3 size={14}/> },
           { id: 'recharges', label: 'Depósitos', icon: <ArrowDownLeft size={14}/>, count: pendingRecharges.length },
           { id: 'withdrawals', label: 'Retiros', icon: <ArrowUpRight size={14}/>, count: pendingWithdrawals.length },
-          { id: 'history', label: 'Auditoría', icon: <History size={14}/> },
+          { id: 'vips', label: 'VIPS', icon: <Crown size={14}/> },
           { id: 'users', label: 'Usuarios', icon: <Users size={14}/> },
+          { id: 'history', label: 'Auditoría', icon: <History size={14}/> },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -151,6 +153,40 @@ export const AdminPanel: React.FC = () => {
             </div>
             <ArrowRight size={20} className="text-blue-500" />
           </button>
+        </div>
+      )}
+
+      {activeTab === 'vips' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center px-2">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Verificación de VIPS</h3>
+          </div>
+          <div className="space-y-3">
+            {allUsers.filter(u => u.role !== 'admin').sort((a,b) => b.vipLevel - a.vipLevel).map(u => (
+              <div key={u.id} className="glass p-4 rounded-xl border border-white/5 flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 rounded-xl ${VIP_LEVELS[u.vipLevel].color} flex items-center justify-center text-slate-900 shadow-lg`}>
+                    <Crown size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-100 text-xs">{u.username}</p>
+                    <p className="text-[8px] text-slate-500 font-bold uppercase">Nivel: {VIP_LEVELS[u.vipLevel].name}</p>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <select 
+                    value={u.vipLevel}
+                    onChange={(e) => adminUpdateUser(u.id, { vipLevel: parseInt(e.target.value) })}
+                    className="bg-slate-800 text-[9px] text-amber-500 border border-white/10 rounded-lg px-2 py-1 outline-none"
+                  >
+                    {VIP_LEVELS.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -10,12 +10,10 @@ export const generateBanner = async (prompt: string): Promise<string | null> => 
     return null;
   }
 
-  // Comprobar si existe la API KEY
-  const apiKey = (window as any).process?.env?.API_KEY || "";
-  if (!apiKey) return null;
-
+  // Guidelines: API key must be obtained exclusively from the environment variable process.env.API_KEY.
+  // Guidelines: Must use new GoogleGenAI({ apiKey: process.env.API_KEY })
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
@@ -34,6 +32,7 @@ export const generateBanner = async (prompt: string): Promise<string | null> => 
       return null;
     }
 
+    // Guidelines: Iterate through all parts to find the image part.
     for (const part of response.candidates[0].content.parts) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;

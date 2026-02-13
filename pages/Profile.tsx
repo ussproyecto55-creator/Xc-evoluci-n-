@@ -18,7 +18,7 @@ export const Profile: React.FC = () => {
 
   if (!user) return null;
 
-  const currentVIP = VIP_LEVELS[user.vipLevel];
+  const currentVIP = VIP_LEVELS[user.vipLevel || 0] || VIP_LEVELS[0];
 
   const formatDate = (iso: string) => {
     return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -124,12 +124,12 @@ export const Profile: React.FC = () => {
       <div className="glass rounded-[2rem] border border-white/5 overflow-hidden">
         <div className="p-5 flex justify-between items-center bg-white/5">
            <div className="flex items-center space-x-4">
-             <div className={`w-12 h-12 rounded-xl ${currentVIP.color} flex items-center justify-center text-slate-900 shadow-lg`}>
+             <div className={`w-12 h-12 rounded-xl ${currentVIP?.color || 'bg-slate-500'} flex items-center justify-center text-slate-900 shadow-lg`}>
                <Crown size={24} />
              </div>
              <div>
                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tu Rango Elite</p>
-               <p className="text-lg font-bold text-slate-100 italic font-display">{currentVIP.name}</p>
+               <p className="text-lg font-bold text-slate-100 italic font-display">{currentVIP?.name || 'Inversor'}</p>
              </div>
            </div>
         </div>

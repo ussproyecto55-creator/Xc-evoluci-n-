@@ -18,7 +18,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   }, []);
 
   if (!user) return null;
-  const currentVIP = VIP_LEVELS[user.vipLevel];
+  const currentVIP = VIP_LEVELS[user.vipLevel || 0] || VIP_LEVELS[0];
 
   return (
     <div className="px-4 py-6 space-y-6">
@@ -127,9 +127,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Saldo Disponible USDT</p>
             <h2 className="text-4xl font-black text-slate-50 font-display italic tracking-tight">${user.balance.toFixed(2)}</h2>
           </div>
-          <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center space-x-2 ${currentVIP.color} text-slate-900 shadow-xl border border-white/20`}>
+          <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center space-x-2 ${currentVIP?.color || 'bg-slate-500'} text-slate-900 shadow-xl border border-white/20`}>
              <ShieldCheck size={14} />
-             <span>{currentVIP.name}</span>
+             <span>{currentVIP?.name || 'Inversor'}</span>
           </div>
         </div>
         
