@@ -54,7 +54,7 @@ export const Recharge: React.FC = () => {
   };
 
   const address = network === 'BEP20' 
-    ? '0x99180023cf210243c10706ac0c1f3da1352cf1c0' 
+    ? '0xc185f044a322bd5630783a8057ce46b5e92f35c5' 
     : 'TJyFGWMW8nviChVTMBx4i4HZ9Te4pF3Hyf';
 
   const copyAddress = () => {
