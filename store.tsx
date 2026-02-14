@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { User, Transaction, TeamMember, ActiveBet, Sport } from './types';
-import { VIP_LEVELS, REFERRAL_COMMISSION, TEAM_REBATES, SPORT_TEMPLATES } from './constants';
+import { VIP_LEVELS, REFERRAL_COMMISSION, TEAM_REBATES, SPORT_TEMPLATES, WEDNESDAY_SUPER_RECHARGE_BONUS } from './constants';
 import { supabase } from './lib/supabase';
 import { X } from 'lucide-react';
 
@@ -36,7 +36,6 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Helper to map DB snake_case to Frontend camelCase
 const mapDbUser = (dbUser: any): User => ({
   id: dbUser.id,
   username: dbUser.username,
@@ -110,11 +109,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getDRTime = () => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc - (3600000 * 4)); 
+    // Honduras UTC-6
+    return new Date(utc - (3600000 * 6)); 
   };
 
   const dailySports = useMemo(() => {
     const drTime = getDRTime();
+    const day = drTime.getDay();
+    // 0 = Domingo, 6 = Sabado. No hay jugadas.
+    if (day === 0 || day === 6) return [];
+
+    const isWednesday = day === 3;
     const resetHour = 11;
     const effectiveDate = drTime.getHours() < resetHour 
       ? new Date(drTime.getTime() - (24 * 60 * 60 * 1000)) 
@@ -125,11 +130,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const isPriority = tpl.id === '2'; 
       const mIdx = (daySeed + idx) % (tpl.markets?.length || 1);
       const market = tpl.markets ? tpl.markets[mIdx] : 'Inverso 3-3';
+      
+      let baseReturn = isPriority ? 0.025 : Math.max(0.011, Math.min(0.018, tpl.baseReturn + ((daySeed % 7) / 1000)));
+      
+      // Súper Miércoles: Jugada principal (ID 2) da 4%
+      if (isWednesday && isPriority) {
+        baseReturn = 0.04;
+      }
+
       return {
         id: tpl.id,
         name: tpl.name, 
         icon: tpl.icon,
-        baseReturn: isPriority ? 0.025 : Math.max(0.011, Math.min(0.018, tpl.baseReturn + ((daySeed % 7) / 1000))),
+        baseReturn: baseReturn,
         color: tpl.color,
         fakeVolume: `${(400 + (daySeed % 500))}K`,
         market: market
@@ -266,16 +279,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const { data: targetUserDb } = await supabase.from('users').select('*').eq('id', tx.user_id).single();
         if (targetUserDb) {
           const targetUser = mapDbUser(targetUserDb);
+          
+          // Lógica de Bono Miércoles
+          const rechargeDate = new Date(tx.date);
+          const isWednesday = rechargeDate.getDay() === 3;
+          const bonusFromWednesday = isWednesday ? (tx.amount * WEDNESDAY_SUPER_RECHARGE_BONUS) : 0;
+
           const newTotal = (targetUser.totalRecharge || 0) + tx.amount;
           let newVIP = 0;
           for (const v of [...VIP_LEVELS].sort((a,b) => a.minRecharge - b.minRecharge)) {
             if (newTotal >= v.minRecharge) newVIP = v.id;
           }
           
-          let bonus = (newVIP > targetUser.vipLevel) ? VIP_LEVELS[newVIP].bonus : 0;
+          let vipAscensionBonus = (newVIP > targetUser.vipLevel) ? VIP_LEVELS[newVIP].bonus : 0;
           
           await adminUpdateUser(targetUser.id, { 
-            balance: targetUser.balance + tx.amount + bonus, 
+            balance: targetUser.balance + tx.amount + vipAscensionBonus + bonusFromWednesday, 
             totalRecharge: newTotal,
             vipLevel: newVIP
           });

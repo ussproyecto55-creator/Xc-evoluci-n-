@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../store';
 import { ShieldCheck, Upload, AlertCircle, CheckCircle2, Copy, FileText, Loader2, X, Clock, Zap, Star } from 'lucide-react';
-import { ARRIVAL_TIMES, SATURDAY_SUPER_RECHARGE_BONUS } from '../constants';
+import { ARRIVAL_TIMES, WEDNESDAY_SUPER_RECHARGE_BONUS } from '../constants';
 
 export const Recharge: React.FC = () => {
   const { recharge, showNotification } = useApp();
@@ -12,7 +12,7 @@ export const Recharge: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const isSaturday = useMemo(() => new Date().getDay() === 6, []);
+  const isWednesday = useMemo(() => new Date().getDay() === 3, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,16 +72,16 @@ export const Recharge: React.FC = () => {
         </div>
       </div>
 
-      {isSaturday && (
+      {isWednesday && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-1 rounded-3xl shadow-lg animate-in zoom-in duration-500">
            <div className="bg-slate-900 px-6 py-4 rounded-[1.4rem] flex items-center justify-between">
               <div className="space-y-0.5">
                  <div className="flex items-center space-x-2 text-amber-500">
                     <Star size={14} className="animate-spin-slow" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Súper Recarga Activa</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Súper Miércoles Activo</span>
                  </div>
                  <p className="text-lg font-black text-white italic leading-none">BONO EXTRA +6%</p>
-                 <p className="text-[8px] text-slate-400 font-bold uppercase">Solo hoy sábado automáticamente</p>
+                 <p className="text-[8px] text-slate-400 font-bold uppercase">Acreditación automática hoy</p>
               </div>
               <Zap size={32} className="text-amber-500 animate-pulse" />
            </div>
@@ -150,8 +150,8 @@ export const Recharge: React.FC = () => {
               />
               <span className="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-slate-500">USDT</span>
             </div>
-            {isSaturday && (
-               <p className="text-[9px] text-green-400 font-bold italic text-right">+${(parseFloat(amount || '0') * SATURDAY_SUPER_RECHARGE_BONUS).toFixed(2)} USDT Bono Súper Recarga</p>
+            {isWednesday && (
+               <p className="text-[9px] text-green-400 font-bold italic text-right">+${(parseFloat(amount || '0') * WEDNESDAY_SUPER_RECHARGE_BONUS).toFixed(2)} USDT Bono Miércoles</p>
             )}
           </div>
 

@@ -1,15 +1,21 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../store';
-import { VIP_LEVELS, ARRIVAL_TIMES, MIN_WITHDRAW_AMOUNT } from '../constants';
-import { ArrowUpFromLine, Save, Landmark, Loader2, Clock, ShieldCheck, DollarSign } from 'lucide-react';
+import { VIP_LEVELS, ARRIVAL_TIMES, MIN_WITHDRAW_AMOUNT, BUSINESS_HOURS } from '../constants';
+import { ArrowUpFromLine, Save, Landmark, Loader2, Clock, ShieldCheck, DollarSign, Timer, AlertCircle, AlertTriangle } from 'lucide-react';
 
 export const Withdraw: React.FC = () => {
-  const { user, withdraw, saveWithdrawalAddress, showNotification } = useApp();
+  const { user, withdraw, saveWithdrawalAddress, showNotification, getDRTime } = useApp();
   const [amountInput, setAmountInput] = useState('');
   const [wallet, setWallet] = useState(user?.withdrawalAddress || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [hnCurrentTime, setHnCurrentTime] = useState(getDRTime());
+
+  useEffect(() => {
+    const timer = setInterval(() => setHnCurrentTime(getDRTime()), 10000);
+    return () => clearInterval(timer);
+  }, [getDRTime]);
 
   useEffect(() => {
     if (user?.withdrawalAddress) {
@@ -20,12 +26,24 @@ export const Withdraw: React.FC = () => {
   if (!user) return null;
   const currentVIP = VIP_LEVELS[user.vipLevel];
 
+  const isWeekend = useMemo(() => {
+    const day = hnCurrentTime.getDay();
+    return day === 0 || day === 6;
+  }, [hnCurrentTime]);
+
+  // VALIDACIÓN DE HORARIO HONDURAS
+  const isWithdrawalWindowOpen = useMemo(() => {
+    if (isWeekend) return false;
+    const hours = hnCurrentTime.getHours();
+    return hours >= BUSINESS_HOURS.WITHDRAW.START && hours < BUSINESS_HOURS.WITHDRAW.END;
+  }, [hnCurrentTime, isWeekend]);
+
   // SEGURIDAD 24H NEXUS
   const hoursSinceReg = (new Date().getTime() - new Date(user.registrationDate).getTime()) / (1000 * 60 * 60);
   const isLockedBySecurity = hoursSinceReg < 24;
   const remainingHours = (24 - hoursSinceReg).toFixed(1);
 
-  // CÁLCULO DE COMISIÓN EN TIEMPO REAL (REACTIVO)
+  // CÁLCULO DE COMISIÓN
   const stats = useMemo(() => {
     const amount = parseFloat(amountInput) || 0;
     const feePercent = currentVIP.commission;
@@ -47,6 +65,14 @@ export const Withdraw: React.FC = () => {
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isWeekend) {
+      showNotification("Retiros cerrados los fines de semana.", "error");
+      return;
+    }
+    if (!isWithdrawalWindowOpen) {
+      showNotification("Canal de retiro cerrado. Abre de 7:00 PM a 9:00 PM.", "error");
+      return;
+    }
     if (isLockedBySecurity) {
       showNotification(`Bloqueo Nexus: disponible en ${remainingHours} horas.`, "error");
       return;
@@ -79,7 +105,7 @@ export const Withdraw: React.FC = () => {
   };
 
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="px-4 py-6 space-y-6 pb-24">
       <div className="flex flex-col space-y-1">
         <h2 className="text-2xl font-bold text-slate-100 font-display italic">Retiros Nexus</h2>
         <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-amber-500">
@@ -88,7 +114,41 @@ export const Withdraw: React.FC = () => {
         </div>
       </div>
 
-      {isLockedBySecurity && (
+      {isWeekend && (
+         <div className="bg-red-500/10 border-2 border-red-500/30 p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-xl">
+            <AlertTriangle size={32} className="text-red-500 animate-pulse" />
+            <p className="text-[10px] text-white font-black uppercase italic tracking-widest">Canal Cerrado: Fin de Semana</p>
+            <p className="text-[8px] text-slate-500 font-bold leading-relaxed px-4">Los retiros se habilitan únicamente de Lunes a Viernes para asegurar la liquidez bancaria del protocolo.</p>
+         </div>
+      )}
+
+      {/* INDICADOR DE ESTADO DEL CANAL */}
+      {!isWeekend && (
+        <div className={`p-5 rounded-[2rem] border flex items-center justify-between shadow-xl transition-all duration-500 ${isWithdrawalWindowOpen ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+           <div className="flex flex-col">
+              <div className="flex items-center space-x-2">
+                 {isWithdrawalWindowOpen ? <Timer size={18} className="animate-pulse" /> : <Clock size={18} />}
+                 <span className="text-[10px] font-black uppercase tracking-widest">{isWithdrawalWindowOpen ? 'Canal Abierto' : 'Canal Cerrado'}</span>
+              </div>
+              <p className="text-[9px] font-bold opacity-80 mt-1 uppercase italic">Horario HN: 7 PM - 9 PM</p>
+           </div>
+           <div className="text-right">
+              <p className="text-[8px] text-slate-500 font-black uppercase">Hora Honduras</p>
+              <p className="text-lg font-black font-display italic leading-none">{hnCurrentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+           </div>
+        </div>
+      )}
+
+      {!isWeekend && !isWithdrawalWindowOpen && (
+        <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-2xl flex items-start space-x-3">
+           <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+           <p className="text-[9px] text-amber-200/70 italic leading-relaxed uppercase font-bold">
+             El sistema de liquidación de retiros solo está disponible en la ventana nocturna de 19:00 a 21:00 (Hora Honduras). Por favor, espere a la apertura del canal.
+           </p>
+        </div>
+      )}
+
+      {isLockedBySecurity && !isWeekend && (
         <div className="bg-red-500/10 border-2 border-red-500/30 p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-lg">
            <ShieldCheck size={32} className="text-red-500" />
            <p className="text-[10px] text-slate-200 font-black uppercase italic">Protocolo Anti-Lavado Activo</p>
@@ -100,11 +160,11 @@ export const Withdraw: React.FC = () => {
 
       <div className="grid grid-cols-2 gap-3">
          <div className="glass p-4 rounded-2xl border border-white/5">
-            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Tasa VIP</p>
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Comisión VIP</p>
             <p className="text-lg font-black text-amber-500 font-display">{currentVIP.commission}%</p>
          </div>
          <div className="glass p-4 rounded-2xl border border-white/5">
-            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Disponibles</p>
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Libres Mes</p>
             <p className="text-lg font-black text-slate-100 font-display">{currentVIP.withdrawalsPerMonth - (user.monthlyWithdrawalCount || 0)}</p>
          </div>
       </div>
@@ -143,7 +203,7 @@ export const Withdraw: React.FC = () => {
 
           <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 space-y-3">
              <div className="flex justify-between items-center text-[10px]">
-                <span className="text-slate-500 font-bold uppercase">Comisión de Red ({stats.feePercent}%)</span>
+                <span className="text-slate-500 font-bold uppercase">Tasa VIP ({stats.feePercent}%)</span>
                 <span className="text-red-400 font-black italic">-${stats.feeAmount.toFixed(2)}</span>
              </div>
              <div className="flex justify-between items-center border-t border-white/5 pt-3">
@@ -157,15 +217,15 @@ export const Withdraw: React.FC = () => {
 
           <button 
             type="submit"
-            disabled={isProcessing || isLockedBySecurity || stats.amount > user.balance || stats.amount < MIN_WITHDRAW_AMOUNT}
+            disabled={isProcessing || !isWithdrawalWindowOpen || isLockedBySecurity || stats.amount > user.balance || stats.amount < MIN_WITHDRAW_AMOUNT || isWeekend}
             className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center space-x-2 ${
-              isProcessing || isLockedBySecurity || stats.amount > user.balance || stats.amount < MIN_WITHDRAW_AMOUNT
+              isProcessing || !isWithdrawalWindowOpen || isLockedBySecurity || stats.amount > user.balance || stats.amount < MIN_WITHDRAW_AMOUNT || isWeekend
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed' 
               : 'gradient-gold text-slate-900 shadow-amber-500/20 active:scale-95'
             }`}
           >
             {isProcessing ? <Loader2 className="animate-spin" size={24} /> : <ArrowUpFromLine size={24} />}
-            <span>Confirmar Retiro Nexus</span>
+            <span>{isWeekend ? 'Cerrado: Fin de Semana' : isWithdrawalWindowOpen ? 'Confirmar Retiro Nexus' : 'Canal Cerrado'}</span>
           </button>
         </form>
       </div>

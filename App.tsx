@@ -29,7 +29,7 @@ const MainApp: React.FC = () => {
       case 'plays': return <PlaysPage />;
       case 'team': return <Team />;
       case 'vip': return <VIPPage />;
-      case 'profile': return <Profile />;
+      case 'profile': return <Profile onNavigate={setActiveTab} />;
       case 'recharge': return <Recharge />;
       case 'withdraw': return <Withdraw />;
       case 'records': return <FinancialRecords />;

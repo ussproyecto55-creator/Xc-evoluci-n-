@@ -2,13 +2,17 @@
 import React, { useState } from 'react';
 import { useApp } from '../store';
 import { 
-  LogOut, Settings, HelpCircle, Shield, ChevronRight, 
-  UserCircle2, Calendar, Crown, Gem, Zap, CheckCircle,
-  MessageCircle, Users as UsersIcon, Lock, Wallet, Save, ExternalLink
+  LogOut, Settings, ChevronRight, 
+  UserCircle2, Calendar, Crown, Lock, Wallet, Save,
+  History as HistoryIcon, Send
 } from 'lucide-react';
 import { VIP_LEVELS } from '../constants';
 
-export const Profile: React.FC = () => {
+interface ProfileProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export const Profile: React.FC<ProfileProps> = ({ onNavigate }) => {
   const { user, logout, adminUpdateUser, saveWithdrawalAddress, showNotification } = useApp();
   const [showSettings, setShowSettings] = useState(false);
   
@@ -136,44 +140,41 @@ export const Profile: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-2 mb-4">Atención al Inversor</h3>
-        <div className="grid grid-cols-3 gap-3">
-           <a 
-            href="https://t.me/Elitesportsm" 
-            target="_blank" 
-            className="glass p-4 rounded-3xl border border-white/5 flex flex-col items-center space-y-2 hover:bg-white/5 transition-all text-center"
-           >
-              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                 <MessageCircle size={20} />
-              </div>
-              <span className="text-[8px] font-bold uppercase tracking-widest">Soporte</span>
-           </a>
-           <a 
-            href="https://t.me/nexus_official_group" 
-            target="_blank" 
-            className="glass p-4 rounded-3xl border border-white/5 flex flex-col items-center space-y-2 hover:bg-white/5 transition-all text-center"
-           >
-              <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400">
-                 <UsersIcon size={20} />
-              </div>
-              <span className="text-[8px] font-bold uppercase tracking-widest">Chat</span>
-           </a>
-           <a 
-            href="https://t.me/+xb9nTH7qSvs0ZjFh" 
-            target="_blank" 
-            className="glass p-4 rounded-3xl border border-amber-500/20 flex flex-col items-center space-y-2 hover:bg-amber-500/10 transition-all text-center bg-amber-500/5"
-           >
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500">
-                 <ExternalLink size={20} />
-              </div>
-              <span className="text-[8px] font-bold uppercase tracking-widest text-amber-500">Grupo</span>
-           </a>
-        </div>
+        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-2 mb-4">Servicio al Cliente</h3>
+        <a 
+          href="https://t.me/+xb9nTH7qSvs0ZjFh" 
+          target="_blank" 
+          className="flex items-center justify-between p-5 bg-blue-500/10 border border-blue-500/20 rounded-[2rem] group active:scale-[0.98] transition-all shadow-xl"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+              <Send size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-black text-white italic uppercase tracking-tighter">Grupo Telegram Oficial</p>
+              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Soporte y Comunidad</p>
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-blue-500 group-hover:translate-x-1 transition-transform" />
+        </a>
       </div>
 
       <div className="space-y-3">
         <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-2 mb-4">Gestión de Perfil</h3>
         <div className="glass rounded-[2rem] border border-white/5 overflow-hidden divide-y divide-white/5">
+          <button 
+            onClick={() => onNavigate && onNavigate('records')}
+            className="w-full p-5 flex justify-between items-center hover:bg-white/5 transition-colors group"
+          >
+            <div className="flex items-center space-x-4 text-slate-300">
+              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-amber-500/10 transition-colors">
+                <HistoryIcon size={18} />
+              </div>
+              <span className="text-sm font-bold">Historial Financiero</span>
+            </div>
+            <ChevronRight size={16} className="text-slate-600" />
+          </button>
+          
           <button 
             onClick={() => setShowSettings(true)}
             className="w-full p-5 flex justify-between items-center hover:bg-white/5 transition-colors group"
@@ -186,6 +187,7 @@ export const Profile: React.FC = () => {
             </div>
             <ChevronRight size={16} className="text-slate-600" />
           </button>
+          
           <button 
             onClick={logout}
             className="w-full p-5 flex justify-between items-center hover:bg-red-500/5 transition-colors text-red-400 group"

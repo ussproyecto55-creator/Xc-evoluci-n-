@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../store';
 import { BUSINESS_HOURS } from '../constants';
 import { Sport } from '../types';
-import { CheckCircle2, Clock, Timer, Activity, BarChart2, ShieldCheck, Zap, TrendingUp, DollarSign } from 'lucide-react';
+import { CheckCircle2, Clock, Timer, Activity, BarChart2, ShieldCheck, Zap, TrendingUp, DollarSign, AlertTriangle } from 'lucide-react';
 
 export const Bet: React.FC = () => {
   const { user, applyCompoundInterest, dailySports, showNotification, getDRTime } = useApp();
@@ -12,25 +12,29 @@ export const Bet: React.FC = () => {
   const [betAmount, setBetAmount] = useState<string>('10');
   const [drCurrentTime, setDrCurrentTime] = useState(getDRTime());
 
-  // Actualizar reloj de RD cada minuto para validación exacta
   useEffect(() => {
     const timer = setInterval(() => setDrCurrentTime(getDRTime()), 10000);
     return () => clearInterval(timer);
   }, []);
 
+  const isWeekend = useMemo(() => {
+    const day = drCurrentTime.getDay();
+    return day === 0 || day === 6;
+  }, [drCurrentTime]);
+
   const isMarketOpen = useMemo(() => {
+    if (isWeekend) return false;
     const hoursRD = drCurrentTime.getHours();
     return hoursRD >= BUSINESS_HOURS.BET.START && hoursRD < BUSINESS_HOURS.BET.END;
-  }, [drCurrentTime]);
+  }, [drCurrentTime, isWeekend]);
+
+  const isWednesday = drCurrentTime.getDay() === 3;
 
   const hasAlreadyBetToday = useMemo(() => {
     if (!user?.lastBetDate) return false;
-    // Comparamos fechas basadas en el ciclo de RD
     const lastBetDate = new Date(user.lastBetDate);
     const lastBetRD = new Date(lastBetDate.toLocaleString("en-US", { timeZone: "America/Santo_Domingo" }));
     const currentRD = drCurrentTime;
-    
-    // Si la última apuesta fue hoy (según el día calendario de RD), bloqueamos
     return lastBetRD.toDateString() === currentRD.toDateString();
   }, [user?.lastBetDate, drCurrentTime]);
 
@@ -45,7 +49,7 @@ export const Bet: React.FC = () => {
     if (!user || !selectedSport || betting) return;
     
     if (!isMarketOpen) {
-      showNotification("Mercado cerrado. Apertura: 11:00 AM.", "error");
+      showNotification("Mercado cerrado por horario o fin de semana.", "error");
       return;
     }
 
@@ -73,18 +77,44 @@ export const Bet: React.FC = () => {
 
   if (!user) return null;
 
+  if (isWeekend) {
+    return (
+      <div className="px-4 py-16 flex flex-col items-center justify-center text-center space-y-6">
+         <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 border border-red-500/20 shadow-2xl animate-pulse">
+            <AlertTriangle size={48} />
+         </div>
+         <div className="space-y-2">
+            <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Mercado en Pausa</h2>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest px-10">Los servidores de arbitraje entran en mantenimiento los Sábados y Domingos. Vuelve el Lunes a las 11:00 AM.</p>
+         </div>
+         <div className="bg-slate-800/50 p-4 rounded-2xl border border-white/5 text-[9px] text-amber-500 font-black uppercase italic">
+            Próxima apertura: Lunes 11:00 AM HN
+         </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 py-6 space-y-6 pb-24">
       <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-lg ${isMarketOpen ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
         <div className="flex items-center space-x-2 font-bold text-[10px] uppercase">
           {isMarketOpen ? <Timer size={18} className="animate-pulse" /> : <Clock size={18} />}
-          <span>{isMarketOpen ? 'Mercado Abierto' : 'Mercado Cerrado (Desde 11:00 AM)'}</span>
+          <span>{isMarketOpen ? 'Mercado Abierto' : 'Mercado Cerrado (Abre 11:00 AM)'}</span>
         </div>
         <div className="text-right">
           <span className="text-[8px] text-slate-500 font-black uppercase tracking-widest block">Potencial ROI</span>
-          <span className="text-[10px] font-black text-amber-500">Hasta 2.50%</span>
+          <span className="text-[10px] font-black text-amber-500">Hasta {isWednesday ? '4.00%' : '2.50%'}</span>
         </div>
       </div>
+
+      {isWednesday && (
+         <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+               <Zap className="text-amber-500" size={20} />
+               <span className="text-[10px] font-black text-white uppercase tracking-widest">¡Súper Miércoles! Jugada Principal al 4% ROI</span>
+            </div>
+         </div>
+      )}
 
       {user.activeBet && (
         <div className="glass rounded-[2rem] p-6 border-2 border-amber-500/30 bg-amber-500/5 shadow-xl">
@@ -141,7 +171,7 @@ export const Bet: React.FC = () => {
                  <div className="flex-1 min-w-0">
                    <div className="flex items-center space-x-2">
                       <h3 className="font-bold text-slate-100 italic text-sm truncate uppercase tracking-tighter">{sport.name}</h3>
-                      {sport.baseReturn >= 0.024 && <span className="text-[7px] bg-amber-500 text-slate-900 px-1.5 py-0.5 rounded-full font-black uppercase animate-pulse shrink-0">MAX LIQUIDITY</span>}
+                      {sport.baseReturn >= 0.039 && <span className="text-[7px] bg-amber-500 text-slate-900 px-1.5 py-0.5 rounded-full font-black uppercase animate-pulse shrink-0">SUPER WEDNESDAY</span>}
                    </div>
                    <div className="flex flex-col mt-1">
                       <div className="flex items-center space-x-2">
