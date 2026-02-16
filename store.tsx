@@ -109,14 +109,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getDRTime = () => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    // Honduras UTC-6
     return new Date(utc - (3600000 * 6)); 
   };
 
   const dailySports = useMemo(() => {
     const drTime = getDRTime();
     const day = drTime.getDay();
-    // 0 = Domingo, 6 = Sabado. No hay jugadas.
     if (day === 0 || day === 6) return [];
 
     const isWednesday = day === 3;
@@ -132,11 +130,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const market = tpl.markets ? tpl.markets[mIdx] : 'Inverso 3-3';
       
       let baseReturn = isPriority ? 0.025 : Math.max(0.011, Math.min(0.018, tpl.baseReturn + ((daySeed % 7) / 1000)));
-      
-      // Súper Miércoles: Jugada principal (ID 2) da 4%
-      if (isWednesday && isPriority) {
-        baseReturn = 0.04;
-      }
+      if (isWednesday && isPriority) baseReturn = 0.04;
 
       return {
         id: tpl.id,
@@ -250,23 +244,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const applyCompoundInterest = async (amount: number, percent: number, sportId: string, market: string) => {
     if (!user || user.activeBet) return;
+
+    // Validación extra de seguridad para evitar dobles apuestas
+    const drTime = getDRTime();
+    const getEff = (date: Date) => {
+      const d = new Date(date.getTime());
+      if (d.getHours() < 11) d.setDate(d.getDate() - 1);
+      d.setHours(0,0,0,0);
+      return d.getTime();
+    };
+    
+    if (user.lastBetDate) {
+      const lastEff = getEff(new Date(user.lastBetDate));
+      const currentEff = getEff(drTime);
+      if (lastEff === currentEff) {
+        showNotification("Ya has operado en este ciclo diario.", "error");
+        return;
+      }
+    }
+
     const profit = (amount * percent) / 100;
     const endTime = new Date(Date.now() + 2400000).toISOString();
     const activeBet = { amount, sportId, startTime: new Date().toISOString(), endTime, potentialProfit: profit, market };
 
     const newBalance = user.balance - amount;
+    const nowIso = new Date().toISOString();
+
     const tx = {
       user_id: user.id,
       username: user.username,
       type: 'bet',
       amount,
       status: 'completed',
-      date: new Date().toISOString(),
+      date: nowIso,
       description: `Ciclo: ${market}`
     };
 
     await supabase.from('transactions').insert([tx]);
-    await adminUpdateUser(user.id, { balance: newBalance, activeBet });
+    // ACTUALIZAMOS lastBetDate EN EL MISMO MOMENTO QUE SE INICIA LA APUESTA
+    await adminUpdateUser(user.id, { balance: newBalance, activeBet, lastBetDate: nowIso });
     fetchData();
   };
 
@@ -279,8 +295,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const { data: targetUserDb } = await supabase.from('users').select('*').eq('id', tx.user_id).single();
         if (targetUserDb) {
           const targetUser = mapDbUser(targetUserDb);
-          
-          // Lógica de Bono Miércoles
           const rechargeDate = new Date(tx.date);
           const isWednesday = rechargeDate.getDay() === 3;
           const bonusFromWednesday = isWednesday ? (tx.amount * WEDNESDAY_SUPER_RECHARGE_BONUS) : 0;
@@ -316,6 +330,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (data.withdrawalAddress !== undefined) dbData.withdrawal_address = data.withdrawalAddress;
     if (data.isBlocked !== undefined) dbData.is_blocked = data.isBlocked;
     if (data.role !== undefined) dbData.role = data.role;
+    // CORRECCIÓN: Mapear lastBetDate al campo de la base de datos
+    if (data.lastBetDate !== undefined) dbData.last_bet_date = data.lastBetDate;
 
     await supabase.from('users').update(dbData).eq('id', userId);
     fetchData();
@@ -374,14 +390,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adminUpdateTransaction, adminUpdateUser, showNotification, getDRTime
     }}>
       {children}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
-        {notifications.map((n) => (
-          <div key={n.id} className="pointer-events-auto backdrop-blur-md shadow-2xl rounded-2xl p-4 min-w-[260px] border-l-4 animate-in slide-in-from-right duration-300 flex items-start gap-3 bg-slate-900/95 border-amber-500 text-slate-100">
-            <div className="flex-1 text-[10px] font-black uppercase tracking-widest leading-tight">{n.message}</div>
-            <button onClick={() => removeNotification(n.id)} className="text-slate-500 hover:text-white"><X size={16} /></button>
-          </div>
-        ))}
-      </div>
     </AppContext.Provider>
   );
 };

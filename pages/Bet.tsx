@@ -30,12 +30,23 @@ export const Bet: React.FC = () => {
 
   const isWednesday = drCurrentTime.getDay() === 3;
 
+  // LÓGICA REFORZADA DE DÍA EFECTIVO (Reset 11:00 AM)
+  const getEffectiveDateStamp = (date: Date) => {
+    // Convertimos a la zona horaria de Honduras para asegurar consistencia
+    const hnDate = new Date(date.toLocaleString("en-US", { timeZone: "America/Santo_Domingo" }));
+    // Si son menos de las 11:00 AM, el día efectivo es el anterior
+    if (hnDate.getHours() < 11) {
+      hnDate.setDate(hnDate.getDate() - 1);
+    }
+    hnDate.setHours(0, 0, 0, 0);
+    return hnDate.getTime();
+  };
+
   const hasAlreadyBetToday = useMemo(() => {
     if (!user?.lastBetDate) return false;
-    const lastBetDate = new Date(user.lastBetDate);
-    const lastBetRD = new Date(lastBetDate.toLocaleString("en-US", { timeZone: "America/Santo_Domingo" }));
-    const currentRD = drCurrentTime;
-    return lastBetRD.toDateString() === currentRD.toDateString();
+    const lastBetEff = getEffectiveDateStamp(new Date(user.lastBetDate));
+    const currentEff = getEffectiveDateStamp(drCurrentTime);
+    return lastBetEff === currentEff;
   }, [user?.lastBetDate, drCurrentTime]);
 
   const previewProfit = useMemo(() => {
@@ -50,6 +61,11 @@ export const Bet: React.FC = () => {
     
     if (!isMarketOpen) {
       showNotification("Mercado cerrado por horario o fin de semana.", "error");
+      return;
+    }
+
+    if (hasAlreadyBetToday) {
+      showNotification("Ya has operado en este ciclo diario.", "error");
       return;
     }
 
@@ -230,16 +246,13 @@ export const Bet: React.FC = () => {
                     <span className="text-slate-500 font-black uppercase text-[8px] tracking-[0.2em]">Retorno Neto Proyectado</span>
                     <span className="text-green-400 font-black italic text-2xl tracking-tighter shadow-green-500/10">+${previewProfit.toFixed(2)} USDT</span>
                  </div>
-                 <div className="pt-4 border-t border-white/5 flex flex-col items-center space-y-2 text-center">
-                    <p className="text-[8px] text-slate-400 font-bold uppercase leading-tight italic">Operación auditada por protocolo Nexus. Tu capital está protegido contra el marcador inverso.</p>
-                 </div>
               </div>
 
               <button 
                 onClick={executeBet} 
-                disabled={betting || (parseFloat(betAmount) || 0) > user.balance || (parseFloat(betAmount) || 0) < 10}
+                disabled={betting || hasAlreadyBetToday || (parseFloat(betAmount) || 0) > user.balance || (parseFloat(betAmount) || 0) < 10}
                 className={`w-full py-5 rounded-[1.5rem] font-black uppercase shadow-2xl transition-all text-sm tracking-widest flex items-center justify-center space-x-2 ${
-                  betting || (parseFloat(betAmount) || 0) > user.balance || (parseFloat(betAmount) || 0) < 10
+                  betting || hasAlreadyBetToday || (parseFloat(betAmount) || 0) > user.balance || (parseFloat(betAmount) || 0) < 10
                   ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
                   : 'gradient-gold text-slate-900 shadow-amber-500/20 active:scale-95'
                 }`}
@@ -251,10 +264,6 @@ export const Bet: React.FC = () => {
                   </>
                 )}
               </button>
-              
-              {(parseFloat(betAmount) || 0) > user.balance && (
-                <p className="text-[9px] text-red-500 text-center font-black uppercase tracking-widest animate-pulse">Fondos Insuficientes</p>
-              )}
             </div>
           </div>
         </div>
